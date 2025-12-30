@@ -1,36 +1,32 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Book from '@/models/Book';
-import Page from '@/models/Page';
 
-export const dynamic = 'force-dynamic'; // מונע Cache סטטי
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
     await connectDB();
 
-    // שליפת כל הספרים
-    const books = await Book.find({}).sort({ updatedAt: -1 }).lean();
+    // שליפה סופר-מהירה (Lean מחזיר JSON טהור בלי מעטפת Mongoose)
+    const books = await Book.find({})
+      .select('name slug totalPages completedPages category updatedAt')
+      .sort({ updatedAt: -1 })
+      .lean();
 
-    // לכל ספר, נחשב סטטיסטיקות (אפשר לייעל בעתיד עם aggregation)
-    const booksWithStats = await Promise.all(books.map(async (book) => {
-      const completedPages = await Page.countDocuments({ book: book._id, status: 'completed' });
-      
-      return {
-        id: book._id,
-        name: book.name,
-        slug: book.slug,
-        path: book.slug, // לתאימות לאחור עם ה-UI
-        thumbnail: `${book.folderPath}/page.1.jpg`, // תמונת כריכה (עמוד 1)
-        totalPages: book.totalPages,
-        completedPages: completedPages,
-        // הוספת מבנה היררכי אם צריך עבור ה-Tree
-        type: 'file', 
-        status: completedPages === book.totalPages ? 'completed' : 'in-progress'
-      };
+    const formattedBooks = books.map(book => ({
+      id: book._id,
+      name: book.name,
+      path: book.slug, // תאימות ל-UI
+      // נתיב תמונה אופטימלי (ניתן לשנות אם משתמשים ב-CDN)
+      thumbnail: `/uploads/books/${book.slug}/page.1.jpg`, 
+      totalPages: book.totalPages,
+      completedPages: book.completedPages || 0,
+      category: book.category || 'כללי',
+      status: book.completedPages === book.totalPages ? 'completed' : 'in-progress'
     }));
 
-    return NextResponse.json({ success: true, books: booksWithStats });
+    return NextResponse.json({ success: true, books: formattedBooks });
 
   } catch (error) {
     console.error('Library List Error:', error);

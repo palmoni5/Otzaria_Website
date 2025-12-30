@@ -28,7 +28,17 @@ const PageSchema = new mongoose.Schema({
   imageUrl: { type: String }, 
 }, { timestamps: true });
 
-// אינדקס שיבטיח שאין שני עמודים עם אותו מספר באותו ספר ויאיץ חיפושים
-PageSchema.index({ book: 1, pageNumber: 1 }, { unique: true });
+PageSchema.index({ 
+    content: 'text', 
+    rightColumn: 'text', 
+    leftColumn: 'text' 
+}, {
+    weights: {
+        content: 10,      // עדיפות לתוכן ראשי
+        rightColumn: 5,
+        leftColumn: 5
+    },
+    name: 'TextIndex'
+});
 
 export default mongoose.models.Page || mongoose.model('Page', PageSchema);
