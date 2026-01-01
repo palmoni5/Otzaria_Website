@@ -4,6 +4,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { getAvatarColor, getInitial } from '@/lib/avatar-colors'
+import { LIBRARY_NAV_LINKS } from '@/lib/navigation-constants'
 import { useState, useEffect } from 'react'
 
 export default function Header() {
@@ -40,18 +41,15 @@ export default function Header() {
         </Link>
         
         <nav className="hidden md:flex items-center gap-6">
-          <Link href="/library" className="text-foreground hover:text-primary transition-colors font-medium">
-            בית
-          </Link>
-          <Link href="/library/books" className="text-foreground hover:text-primary transition-colors">
-            ספרייה
-          </Link>
-          <Link href="/library/users" className="text-foreground hover:text-primary transition-colors">
-            משתמשים
-          </Link>
-          <Link href="/library/upload" className="text-foreground hover:text-primary transition-colors">
-            הוספת ספר
-          </Link>
+          {LIBRARY_NAV_LINKS.map(link => (
+            <Link 
+              key={link.href}
+              href={link.href} 
+              className="text-foreground hover:text-primary transition-colors font-medium"
+            >
+              {link.label}
+            </Link>
+          ))}
           
           {session ? (
             <div className="flex items-center gap-4">

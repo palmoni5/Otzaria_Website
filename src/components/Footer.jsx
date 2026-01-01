@@ -1,5 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import LinkList from './LinkList'
+import { FOOTER_QUICK_LINKS, FOOTER_EXTERNAL_LINKS } from '@/lib/navigation-constants'
 
 export default function Footer() {
   return (
@@ -26,7 +28,7 @@ export default function Footer() {
               </Link>
               <Link 
                 href="/library/upload" 
-                className="..."
+                className="px-6 py-2.5 border-2 border-primary text-primary rounded-lg hover:bg-primary-container transition-all hover:scale-105 font-medium"
               >
                 הוסף ספר
               </Link>
@@ -34,51 +36,25 @@ export default function Footer() {
           </div>
           
           {/* Quick Links - Internal */}
-          <div>
-            <h3 className="font-bold mb-4 text-on-surface text-lg">קישורים מהירים</h3>
-            <ul className="space-y-3">
-              <li>
-                <Link href="/" className="text-on-surface/70 hover:text-primary transition-colors flex items-center gap-2 group">
-                  <span className="material-symbols-outlined text-sm">link</span>
-                  אוצריא - תוכנה
-                </Link>
-              </li>
-              <li>
-                <Link href="/library" className="text-on-surface/70 hover:text-primary transition-colors flex items-center gap-2 group">
-                  <span className="material-symbols-outlined text-sm">link</span>
-                  הספרייה
-                </Link>
-              </li>
-              <li>
-                <Link href="/library/users" className="text-on-surface/70 hover:text-primary transition-colors flex items-center gap-2 group">
-                  <span className="material-symbols-outlined text-sm">link</span>
-                  משתמשים
-                </Link>
-              </li>
-              <li>
-                <Link href="/library/dashboard" className="text-on-surface/70 hover:text-primary transition-colors flex items-center gap-2 group">
-                  <span className="material-symbols-outlined text-sm">link</span>
-                  איזור אישי
-                </Link>
-              </li>
-            </ul>
-          </div>
+          <LinkList 
+            title="קישורים מהירים" 
+            links={FOOTER_QUICK_LINKS} 
+          />
 
           {/* External Links */}
-          <div>
-            <h3 className="font-bold mb-4 text-on-surface text-lg">קישורים חיצוניים</h3>
-            <ul className="space-y-3">
-              <li>
-                <a href="https://github.com/Y-PLONI/otzaria-library" target="_blank" rel="noopener noreferrer" className="text-on-surface/70 hover:text-primary transition-colors flex items-center gap-2 group">
-                  <span className="material-symbols-outlined text-sm">open_in_new</span>
-                  GitHub - ספריית אוצריא
-                </a>
-              </li>
-              <li>
-                <a href="https://mitmachim.top/topic/90100/%D7%91%D7%A7%D7%A9%D7%94-%D7%94%D7%A4%D7%A8%D7%95%D7%99%D7%A7%D7%98-%D7%94%D7%A9%D7%99%D7%AA%D7%95%D7%A4%D7%99-%D7%94%D7%97%D7%93%D7%A9-%D7%9E%D7%91%D7%99%D7%AA-%D7%90%D7%95%D7%A6%D7%A8%D7%99%D7%90-%D7%95%D7%96%D7%99%D7%AA-%D7%94%D7%95%D7%A1%D7%A4%D7%AA-%D7%A1%D7%A4%D7%A8%D7%99%D7%9D-%D7%97%D7%A1%D7%A8%D7%99%D7%9D" target="_blank" rel="noopener noreferrer" className="text-on-surface/70 hover:text-primary transition-colors flex items-center gap-2 group">
-                  <span className="material-symbols-outlined text-sm">open_in_new</span>
-                  מתמחים טופ
-                </a>
+          <LinkList 
+            title="קישורים חיצוניים" 
+            links={FOOTER_EXTERNAL_LINKS} 
+          />
+        </div>
+        
+        <div className="border-t border-outline/20 pt-8 text-center text-on-surface/60 text-sm">
+          <p>© {new Date().getFullYear()} ספריית אוצריא. כל הזכויות שמורות.</p>
+        </div>
+      </div>
+    </footer>
+  )
+}                </a>
               </li>
             </ul>
           </div>

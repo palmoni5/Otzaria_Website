@@ -4,19 +4,11 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
+import { MAIN_NAV_LINKS } from '@/lib/navigation-constants'
 
 export default function OtzariaSoftwareHeader() {
   const pathname = usePathname()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-
-  const navLinks = [
-    { href: '/library', label: 'ספריית אוצריא', highlight: true },
-    { href: '/#download', label: 'הורדה' },
-    { href: '/docs', label: 'מדריכים' },
-    { href: '/faq', label: 'שאלות נפוצות' },
-    { href: '/donate', label: 'תרומות' },
-    { href: 'https://forum.otzaria.org', label: 'פורום', external: true }
-  ]
 
   return (
     <header className="sticky top-0 z-50 w-full glass-strong border-b border-gray-200 bg-white/80 backdrop-blur-md">
@@ -28,7 +20,7 @@ export default function OtzariaSoftwareHeader() {
         
         {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-6">
-          {navLinks.map(link => (
+          {MAIN_NAV_LINKS.map(link => (
             <Link
               key={link.label}
               href={link.href}
@@ -54,7 +46,7 @@ export default function OtzariaSoftwareHeader() {
       {/* Mobile Menu */}
       {isMenuOpen && (
         <div className="md:hidden absolute top-16 left-0 w-full bg-white border-b border-gray-200 shadow-lg p-4 flex flex-col gap-4">
-          {navLinks.map(link => (
+          {MAIN_NAV_LINKS.map(link => (
             <Link
               key={link.label}
               href={link.href}
