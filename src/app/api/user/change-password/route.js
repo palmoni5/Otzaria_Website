@@ -19,7 +19,7 @@ export async function POST(request) {
     await connectDB();
     
     // שליפת המשתמש עם הסיסמה (בדרך כלל הסיסמה לא נשלפת בדיפולט)
-    const user = await User.findById(session.user._idd);
+    const user = await User.findById(session.user._id);
 
     // אימות סיסמה ישנה
     const isValid = await compare(currentPassword, user.password);
