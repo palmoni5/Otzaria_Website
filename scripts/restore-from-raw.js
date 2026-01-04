@@ -3,9 +3,9 @@ import fs from 'fs';
 import readline from 'readline';
 import path from 'path';
 import dotenv from 'dotenv';
+import slugify from 'slugify';
 import { fileURLToPath } from 'url';
 
-// 1. טעינת משתני סביבה
 dotenv.config({ path: '.env.local' });
 dotenv.config({ path: '.env' });
 
@@ -13,7 +13,7 @@ const FILES_JSON_PATH = 'files.json';
 const MESSAGES_JSON_PATH = 'messages.json';
 const BACKUPS_JSON_PATH = 'backups.json';
 
-// --- הגדרת סכמות (בדיוק כמו בפרויקט) ---
+// --- סכמות ---
 const UserSchema = new mongoose.Schema({
     name: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
@@ -46,7 +46,7 @@ const UploadSchema = new mongoose.Schema({
     uploader: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     bookName: { type: String, required: true },
     originalFileName: { type: String },
-    content: { type: String }, // כאן נכנס הטקסט
+    content: { type: String }, 
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
 }, { timestamps: true });
@@ -70,14 +70,13 @@ const Page = mongoose.models.Page || mongoose.model('Page', PageSchema);
 const Upload = mongoose.models.Upload || mongoose.model('Upload', UploadSchema);
 const Message = mongoose.models.Message || mongoose.model('Message', MessageSchema);
 
-// --- פונקציות עזר ---
+// --- עזרים ---
 
 async function loadDataFromFile(filePath) {
     if (!fs.existsSync(filePath)) {
         console.warn(`⚠️ File not found: ${filePath}`);
         return [];
     }
-
     const results = [];
     const fileStream = fs.createReadStream(filePath);
     const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
@@ -110,17 +109,15 @@ function decodeFileName(encodedName) {
     } catch (e) { return encodedName; }
 }
 
-// יצירת slug שמשמר עברית - קריטי לתיקון הקישורים!
 function createHebrewSlug(name) {
     if (!name) return 'unknown';
-    // מחליף רווחים במקפים, משאיר עברית ואנגלית ומספרים
     return name.trim().replace(/\s+/g, '-').replace(/[^\w\u0590-\u05FF\-]/g, '');
 }
 
+// מפות גלובליות
 const userMap = new Map(); 
 const bookMap = new Map(); 
-// מפה לשמירת תוכן טקסטואלי: שם קובץ -> תוכן
-const contentMap = new Map(); 
+const contentMap = new Map(); // fileName -> content
 
 async function restore() {
     try {
@@ -128,41 +125,42 @@ async function restore() {
         await mongoose.connect(process.env.MONGODB_URI);
         console.log('✅ Connected.');
 
-        // קריאת הנתונים
         const rawFiles = await loadDataFromFile(FILES_JSON_PATH);
         const rawBackups = await loadDataFromFile(BACKUPS_JSON_PATH);
         const rawMessages = await loadDataFromFile(MESSAGES_JSON_PATH);
         const allMetadataSources = [...rawFiles, ...rawBackups];
 
         // ---------------------------------------------------------
-        // שלב 0: בניית מפת תוכן (Content Cache)
+        // שלב 0: בניית מפת תוכן חכמה
         // ---------------------------------------------------------
-        console.log('📝 Building content cache...');
+        console.log('📝 Building smart content cache...');
         rawFiles.filter(f => f.path && f.path.startsWith('data/content/')).forEach(fileRecord => {
             if (fileRecord.data && fileRecord.data.content) {
-                const fileName = path.basename(fileRecord.path); // שם הקובץ המקודד (כמו ב-files.json)
-                const decoded = decodeFileName(fileName); // שם מפוענח
+                // שמירת התוכן תחת כל המפתחות האפשריים
+                const rawName = path.basename(fileRecord.path); // _D7_90...txt
+                const decodedName = decodeFileName(rawName);    // אילת השחר...txt
                 
-                // שמירה בשתי הווריאציות כדי להבטיח התאמה
-                contentMap.set(fileName, fileRecord.data.content);
-                contentMap.set(decoded, fileRecord.data.content);
+                contentMap.set(rawName, fileRecord.data.content);
+                contentMap.set(decodedName, fileRecord.data.content);
+                
+                // נסיון לשמור גם בלי סיומת .txt למקרה הצורך
+                contentMap.set(rawName.replace('.txt', ''), fileRecord.data.content);
+                contentMap.set(decodedName.replace('.txt', ''), fileRecord.data.content);
             }
         });
-        console.log(`✅ Cached ${contentMap.size} text files.`);
+        console.log(`✅ Cached content for ${contentMap.size} keys.`);
 
         // ---------------------------------------------------------
         // שלב 1: משתמשים
         // ---------------------------------------------------------
         const usersEntry = rawFiles.find(f => f.path === 'data/users.json');
         if (usersEntry && usersEntry.data) {
-            console.log(`Processing users...`);
             for (const u of usersEntry.data) {
                 const newId = new mongoose.Types.ObjectId();
                 const existingUser = await User.findOne({ email: u.email });
                 const finalId = existingUser ? existingUser._id : newId;
                 
                 userMap.set(u.id, finalId);
-
                 const points = u.points?.$numberInt ? parseInt(u.points.$numberInt) : (u.points || 0);
 
                 await User.updateOne(
@@ -188,16 +186,14 @@ async function restore() {
         // ---------------------------------------------------------
         const booksEntry = rawFiles.find(f => f.path === 'data/books.json');
         if (booksEntry && booksEntry.data) {
-            console.log(`Processing books...`);
             for (const b of booksEntry.data) {
                 const newId = new mongoose.Types.ObjectId();
-                const slug = createHebrewSlug(b.name); // שימוש ב-Slug עברי תקין!
+                const slug = createHebrewSlug(b.name);
                 
                 const existingBook = await Book.findOne({ name: b.name });
                 const finalId = existingBook ? existingBook._id : newId;
 
                 bookMap.set(b.name, { _id: finalId, slug });
-
                 const totalPages = b.totalPages?.$numberInt ? parseInt(b.totalPages.$numberInt) : (b.totalPages || 0);
 
                 await Book.updateOne(
@@ -218,13 +214,12 @@ async function restore() {
         }
 
         // ---------------------------------------------------------
-        // שלב 3: דפים
+        // שלב 3: איחוי דפים
         // ---------------------------------------------------------
-        console.log('🧩 processing pages...');
+        console.log('🧩 Processing pages...');
         const pageOperations = [];
         const mergedPages = {};
 
-        // איסוף מטא-דאטה
         allMetadataSources.filter(f => f.path && f.path.startsWith('data/pages/')).forEach(fileRecord => {
             const bookName = path.basename(fileRecord.path, '.json');
             if (!fileRecord.data || !Array.isArray(fileRecord.data)) return;
@@ -235,12 +230,10 @@ async function restore() {
 
             fileRecord.data.forEach(p => {
                 const num = p.number?.$numberInt ? parseInt(p.number.$numberInt) : p.number;
-                
-                // שימוש בקישור מהגיבוי אם קיים
                 const defaultThumb = `/uploads/books/${slugForThumb}/page.${num}.jpg`;
                 
-                // נסיון למצוא תוכן טקסטואלי תואם
-                // שם הקובץ בדרך כלל: "שם ספר_page_1.txt"
+                // חיפוש תוכן לדף הספציפי הזה
+                // השם בדרך כלל הוא: "שם ספר_page_1.txt"
                 const contentKey = `${bookName}_page_${num}.txt`;
                 const content = contentMap.get(contentKey) || '';
 
@@ -256,13 +249,35 @@ async function restore() {
             });
         });
 
-        // יצירת אובייקטים להכנסה
-        const bookCompletedCounts = {};
+        // עדכון דפים על בסיס קבצי תוכן בלבד (אם חסר מטא-דאטה)
+        rawFiles.filter(f => f.path && f.path.startsWith('data/content/')).forEach(fileRecord => {
+            const fileName = path.basename(fileRecord.path, '.txt');
+            const decodedName = decodeFileName(fileName);
+            const splitIndex = decodedName.lastIndexOf('_page_');
+            
+            if (splitIndex !== -1) {
+                const bookName = decodedName.substring(0, splitIndex).trim();
+                const pageNum = parseInt(decodedName.substring(splitIndex + 6));
 
+                if (bookMap.has(bookName)) {
+                    if (!mergedPages[bookName]) mergedPages[bookName] = {};
+                    if (!mergedPages[bookName][pageNum]) {
+                         const bookInfo = bookMap.get(bookName);
+                         const slug = bookInfo ? bookInfo.slug : 'unknown';
+                         mergedPages[bookName][pageNum] = { 
+                            status: 'available',
+                            thumbnail: `/uploads/books/${slug}/page.${pageNum}.jpg`
+                        };
+                    }
+                    mergedPages[bookName][pageNum].content = fileRecord.data?.content || '';
+                }
+            }
+        });
+
+        const bookCompletedCounts = {};
         for (const [bookName, pagesObj] of Object.entries(mergedPages)) {
             const bookInfo = bookMap.get(bookName);
             if (!bookInfo) continue;
-
             bookCompletedCounts[bookInfo._id] = 0;
 
             for (const [pageNumStr, pageData] of Object.entries(pagesObj)) {
@@ -273,14 +288,12 @@ async function restore() {
                      claimedByNewId = userMap.values().next().value; 
                 }
 
-                if (pageData.status === 'completed') {
-                    bookCompletedCounts[bookInfo._id]++;
-                }
+                if (pageData.status === 'completed') bookCompletedCounts[bookInfo._id]++;
 
                 pageOperations.push({
                     book: bookInfo._id,
                     pageNumber: parseInt(pageNumStr),
-                    content: pageData.content,
+                    content: pageData.content || '',
                     status: pageData.status || 'available',
                     claimedBy: claimedByNewId,
                     claimedAt: pageData.claimedAt ? new Date(pageData.claimedAt) : null,
@@ -293,7 +306,6 @@ async function restore() {
         if (pageOperations.length > 0) {
             console.log(`Inserting ${pageOperations.length} pages...`);
             await Page.deleteMany({});
-            
             const chunkSize = 500;
             for (let i = 0; i < pageOperations.length; i += chunkSize) {
                 await Page.insertMany(pageOperations.slice(i, i + chunkSize));
@@ -327,33 +339,40 @@ async function restore() {
 
             const uploadsToInsert = uploadsData.map(u => {
                 let uploaderId = null;
-                let reviewerId = null;
-
                 if (u.uploadedById && userMap.has(u.uploadedById)) {
                     uploaderId = userMap.get(u.uploadedById);
                 } else {
                     uploaderId = userMap.values().next().value;
                 }
 
-                // נסיון לאתר את התוכן האמיתי של הקובץ
-                // ב-Uploads, ה-fileName הוא המפתח לקובץ התוכן ב-files.json
+                // --- לוגיקה משופרת למציאת תוכן ---
                 let realContent = '';
+                
+                // נסיון 1: לפי fileName (בדרך כלל מקודד)
                 if (u.fileName && contentMap.has(u.fileName)) {
                     realContent = contentMap.get(u.fileName);
-                } else if (u.originalFileName && contentMap.has(u.originalFileName)) {
+                } 
+                // נסיון 2: לפי originalFileName (שם עברי)
+                else if (u.originalFileName && contentMap.has(u.originalFileName)) {
                     realContent = contentMap.get(u.originalFileName);
                 }
-
-                // אם לא מצאנו תוכן, נשים הודעה, אבל לא ריק לגמרי כדי שהקובץ ייווצר
+                // נסיון 3: התאמה מיוחדת (הסרת timestamps אם יש)
+                else if (u.fileName) {
+                    // למשל: name_timestamp.txt -> name.txt
+                    const baseName = u.fileName.replace(/_\d+\.txt$/, '.txt');
+                    if (contentMap.has(baseName)) realContent = contentMap.get(baseName);
+                }
+                
+                // fallback אחרון
                 const finalContent = realContent || u.content || "התוכן לא שוחזר מהגיבוי.";
 
                 return {
                     uploader: uploaderId,
                     bookName: u.bookName || 'ספר ללא שם',
-                    originalFileName: u.originalFileName || `upload-${Date.now()}.txt`,
-                    content: finalContent, // כאן התיקון! התוכן נכנס ל-DB
+                    originalFileName: u.originalFileName || `upload.txt`,
+                    content: finalContent,
                     status: u.status === 'approved' ? 'approved' : u.status === 'rejected' ? 'rejected' : 'pending',
-                    reviewedBy: reviewerId,
+                    reviewedBy: null, // אפשר להשאיר ריק
                     createdAt: u.uploadedAt ? new Date(u.uploadedAt) : new Date(),
                     updatedAt: new Date()
                 };
@@ -369,7 +388,6 @@ async function restore() {
         if (rawMessages && rawMessages.length > 0) {
             console.log(`📨 Importing messages...`);
             const messagesToInsert = [];
-
             for (const msg of rawMessages) {
                 const senderId = userMap.get(msg.senderId);
                 const replies = (msg.replies || []).map(r => ({
@@ -389,10 +407,8 @@ async function restore() {
                     });
                 }
             }
-            if (messagesToInsert.length > 0) {
-                await Message.deleteMany({});
-                await Message.insertMany(messagesToInsert);
-            }
+            await Message.deleteMany({});
+            await Message.insertMany(messagesToInsert);
             console.log('✅ Messages imported.');
         }
 
