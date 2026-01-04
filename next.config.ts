@@ -2,7 +2,7 @@
 const nextConfig = {
   experimental: {
     serverActions: {
-      bodySizeLimit: '50mb', // הגדלת מגבלה להעלאת PDF
+      bodySizeLimit: '500mb', // הגדלת מגבלה להעלאת PDF
     },
   },
   images: {
