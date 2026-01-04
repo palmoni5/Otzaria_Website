@@ -1,4 +1,3 @@
-// src/app/library/dashboard/page.jsx
 'use client'
 
 import { useSession } from 'next-auth/react'
