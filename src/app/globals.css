@@ -1,49 +1,43 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-  
-  /* Fallback variables for missing definitions found in styles/globals.css */
-  --primary-rgb: 0, 0, 0;
-  --primary-container: #f0f0f0;
-  --secondary-container: #e0e0e0;
-  --tertiary-container: #d0d0d0;
-  --surface-variant: #cccccc;
-}
+@theme {
+  /* הגדרת צבעים מהפרוייקט הישן */
+  --color-background: #fefbf6;
+  --color-surface: #f8f4ef;
+  --color-surface-variant: #e7e0d8;
+  --color-primary: #6b5d4f;
+  --color-primary-container: #f4ede3;
+  --color-secondary: #8b7355;
+  --color-secondary-container: #f5ead8;
+  --color-accent: #9c7c4f;
+  --color-on-background: #1c1b1a;
+  --color-on-surface: #1c1b1a;
+  --color-on-primary: #ffffff;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-frank: var(--font-frank-ruehl);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    
-    /* Dark mode fallbacks */
-    --primary-rgb: 255, 255, 255;
-    --primary-container: #333333;
-    --secondary-container: #444444;
-    --tertiary-container: #555555;
-    --surface-variant: #666666;
-  }
+  /* הגדרת פונטים */
+  --font-frank: var(--font-frank-ruehl), serif;
+  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-hebrew: 'Segoe UI', Tahoma, Arial, sans-serif;
 }
 
 @layer base {
   html {
     direction: rtl;
+    /* 1. העבר את צבע הרקע לכאן */
+    background-color: var(--color-background);
   }
   
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    /* 2. שנה את צבע הרקע של הגוף לשקוף */
+    background-color: transparent;
+    color: var(--color-on-background);
+    font-family: var(--font-hebrew);
     position: relative;
+    /* 3. וודא שהגוף תופס את כל הגובה */
+    min-height: 100vh;
   }
   
+  /* תמונת הרקע (הקרע) - נשאר כפי שהוא */
   body::before {
     content: '';
     position: fixed;
@@ -78,53 +72,51 @@
 
 @layer utilities {
   .font-frank {
-    font-family: var(--font-frank-ruehl), serif;
+    font-family: var(--font-frank);
   }
 
   .glass {
-    @apply bg-background/60 backdrop-blur-md border border-[var(--surface-variant)]/50;
+    background-color: color-mix(in srgb, var(--color-background) 60%, transparent);
+    backdrop-filter: blur(12px);
+    border: 1px solid color-mix(in srgb, var(--color-surface-variant) 50%, transparent);
   }
   
   .glass-strong {
-    @apply bg-background/95 backdrop-blur-lg border border-[var(--surface-variant)];
+    background-color: color-mix(in srgb, var(--color-background) 95%, transparent);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--color-surface-variant);
   }
   
   /* הסתרת פס גלילה */
   .custom-scrollbar {
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
   }
   
   .custom-scrollbar::-webkit-scrollbar {
-    display: none; /* Chrome, Safari, Opera */
+    display: none;
   }
 
-  /* אנימציות מותאמות אישית */
+  /* אנימציות */
   @keyframes float {
-    0%, 100% {
-      transform: translateY(0px);
-    }
-    50% {
-      transform: translateY(-20px);
-    }
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-20px); }
   }
 
   @keyframes pulse-glow {
-    0%, 100% {
-      box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.3);
-    }
-    50% {
-      box-shadow: 0 0 40px rgba(var(--primary-rgb), 0.6);
-    }
+    0%, 100% { box-shadow: 0 0 20px rgba(107, 93, 79, 0.3); }
+    50% { box-shadow: 0 0 40px rgba(107, 93, 79, 0.6); }
   }
 
   @keyframes shimmer {
-    0% {
-      background-position: -1000px 0;
-    }
-    100% {
-      background-position: 1000px 0;
-    }
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
   }
 
   .animate-float {
@@ -146,7 +138,11 @@
     animation: shimmer 3s infinite;
   }
 
-  /* אפקט hover מתקדם */
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+  
+  /* אפקטים נוספים */
   .hover-lift {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
@@ -154,47 +150,5 @@
   .hover-lift:hover {
     transform: translateY(-8px);
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-  }
-
-  /* גרדיאנט מונפש */
-  .gradient-animate {
-    background: linear-gradient(
-      -45deg,
-      var(--primary-container),
-      var(--secondary-container),
-      var(--tertiary-container),
-      var(--primary-container)
-    );
-    background-size: 400% 400%;
-    animation: gradient 15s ease infinite;
-  }
-
-  @keyframes gradient {
-    0% {
-      background-position: 0% 50%;
-    }
-    50% {
-      background-position: 100% 50%;
-    }
-    100% {
-      background-position: 0% 50%;
-    }
-  }
-
-  /* אנימציית רעידה לשגיאות */
-  @keyframes shake {
-    0%, 100% {
-      transform: translateX(0);
-    }
-    10%, 30%, 50%, 70%, 90% {
-      transform: translateX(-5px);
-    }
-    20%, 40%, 60%, 80% {
-      transform: translateX(5px);
-    }
-  }
-
-  .animate-shake {
-    animation: shake 0.5s ease-in-out;
   }
 }

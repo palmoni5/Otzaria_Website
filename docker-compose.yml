@@ -6,20 +6,14 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # חיבור למונגו המקומי שלך בווינדוס
-      - MONGODB_URI=mongodb://host.docker.internal:27017/otzaria_db
-      - NEXTAUTH_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=development_secret_key
-      # תיקייה לשמירת ספרים בתוך הדוקר
+      # משתנים אלו יטענו מקובץ .env שיושב באותו שרת, אך לא בגיט
+      - MONGODB_URI=${MONGODB_URI}
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - UPLOAD_DIR=/app/public/uploads
-      - WATCHPACK_POLLING=true
     volumes:
-      # 1. סנכרון הקוד: כל שינוי בווינדוס ישתקף מיד בדוקר
       - ./:/app
-      # 2. החרגה: אל תיתן לווינדוס לדרוס את node_modules של הלינוקס
-      # זה שומר את ההתקנות בתוך הדוקר כדי שלא יוריד שוב
       - /app/node_modules
-      # 3. החרגה: אל תסנכרן את תיקיית הבנייה של נקסט (מונע לופים ואיטיות)
       - /app/.next
-      # 4. שמירת קבצים: קבצים שהעלית יישמרו בווינדוס
       - ./public/uploads:/app/public/uploads

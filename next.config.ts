@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone', // קריטי לשרתי VPS!
   experimental: {
     serverActions: {
       bodySizeLimit: '50mb', // הגדלת מגבלה להעלאת PDF
