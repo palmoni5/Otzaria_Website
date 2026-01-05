@@ -6,29 +6,62 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function POST(request) {
-    const session = await getServerSession(authOptions);
-    if (session?.user?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-
-    await connectDB();
-
-    // 1. עדכון מספר עמודים כולל בכל ספר (למקרה שמחקו/הוסיפו עמודים ידנית)
-    // הערה: פעולה זו יכולה להיות כבדה אם יש המון ספרים, עדיף להריץ ברקע או על ספר ספציפי.
-    // כאן נדגים עדכון פשוט.
-    
-    const books = await Book.find({});
-    let updatedCount = 0;
-
-    for (const book of books) {
-        const actualPages = await Page.countDocuments({ book: book._id });
-        if (book.totalPages !== actualPages) {
-            book.totalPages = actualPages;
-            await book.save();
-            updatedCount++;
+    try {
+        const session = await getServerSession(authOptions);
+        if (session?.user?.role !== 'admin') {
+            return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
         }
-    }
 
-    return NextResponse.json({ 
-        success: true, 
-        message: `בוצע רענון נתונים. עודכנו ${updatedCount} ספרים.` 
-    });
+        await connectDB();
+
+        // 1. שליפת כל הספרים
+        const books = await Book.find({});
+        let updatedCount = 0;
+        const updatesLog = [];
+
+        for (const book of books) {
+            // ספירה אגרגטיבית לכל ספר (יעיל יותר משתי שליפות נפרדות)
+            const stats = await Page.aggregate([
+                { $match: { book: book._id } },
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: 1 },
+                        completed: { 
+                            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } 
+                        }
+                    }
+                }
+            ]);
+
+            const actualTotal = stats[0]?.total || 0;
+            const actualCompleted = stats[0]?.completed || 0;
+
+            // בדיקה האם נדרש עדכון
+            if (book.totalPages !== actualTotal || book.completedPages !== actualCompleted) {
+                
+                await Book.findByIdAndUpdate(book._id, {
+                    totalPages: actualTotal,
+                    completedPages: actualCompleted
+                });
+
+                updatedCount++;
+                updatesLog.push({
+                    book: book.name,
+                    before: { total: book.totalPages, completed: book.completedPages },
+                    after: { total: actualTotal, completed: actualCompleted }
+                });
+            }
+        }
+
+        return NextResponse.json({ 
+            success: true, 
+            message: `תהליך הסנכרון הסתיים. עודכנו ${updatedCount} ספרים.`,
+            details: updatesLog
+        });
+
+    } catch (error) {
+        console.error('Recalc Error:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 }

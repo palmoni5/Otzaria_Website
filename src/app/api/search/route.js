@@ -1,34 +1,40 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Page from '@/models/Page';
-import Book from '@/models/Book';
 
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
         const query = searchParams.get('q');
         
-        if (!query) return NextResponse.json({ results: [] });
+        if (!query || query.trim().length < 2) {
+            return NextResponse.json({ results: [] });
+        }
 
         await connectDB();
 
-        // חיפוש טקסט מלא במונגו
+        // חיפוש טקסט מלא במונגו (דורש אינדקס טקסט ב-Schema)
         const pages = await Page.find(
             { $text: { $search: query } },
-            { score: { $meta: "textScore" } } // ציון רלוונטיות
+            { score: { $meta: "textScore" } }
         )
         .sort({ score: { $meta: "textScore" } })
         .limit(50)
-        .populate('book', 'name slug'); // שליפת שם הספר
+        .populate('book', 'name slug');
 
-        // עיבוד התוצאות לפורמט נוח ל-UI
-        const results = pages.map(page => ({
-            bookName: page.book.name,
-            bookSlug: page.book.slug,
-            pageNumber: page.pageNumber,
-            snippet: getSnippet(page.content || page.rightColumn + " " + page.leftColumn, query),
-            score: page.score
-        }));
+        const results = pages.map(page => {
+            // איחוד התוכן לטקסט אחד לחיפוש הסניפט
+            const fullText = page.content || `${page.rightColumn} ${page.leftColumn}`;
+            
+            return {
+                id: page._id,
+                bookName: page.book?.name || 'ספר לא ידוע',
+                bookSlug: page.book?.slug,
+                pageNumber: page.pageNumber,
+                snippet: getSnippet(fullText, query),
+                score: page.score
+            };
+        });
 
         return NextResponse.json({ success: true, results });
     } catch (error) {
@@ -36,13 +42,44 @@ export async function GET(request) {
     }
 }
 
-// פונקציית עזר לחיתוך הטקסט סביב מילת החיפוש
+// פונקציית עזר משופרת לחיתוך טקסט
 function getSnippet(text, query) {
     if (!text) return '';
-    const index = text.indexOf(query); // פשוט לצורך הדוגמה, עדיף Regex
-    if (index === -1) return text.substring(0, 100) + '...';
     
-    const start = Math.max(0, index - 50);
-    const end = Math.min(text.length, index + 50 + query.length);
-    return '...' + text.substring(start, end) + '...';
+    // ניקוי ביטוי החיפוש לשימוש ב-Regex
+    const safeQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // חיפוש המילה כחלק ממשפט (Case insensitive)
+    const regex = new RegExp(safeQuery, 'i');
+    
+    const match = text.match(regex);
+    if (!match) return text.substring(0, 100) + '...';
+    
+    const index = match.index;
+    const padding = 60; // מספר תווים לפני ואחרי
+    
+    // חישוב גבולות החיתוך
+    let start = Math.max(0, index - padding);
+    let end = Math.min(text.length, index + query.length + padding);
+    
+    // ניסיון לחתוך ברווח הקרוב כדי לא לשבור מילים
+    if (start > 0) {
+        const spaceBefore = text.lastIndexOf(' ', start + 10);
+        if (spaceBefore > start - 10) start = spaceBefore + 1;
+    }
+    
+    if (end < text.length) {
+        const spaceAfter = text.indexOf(' ', end - 10);
+        if (spaceAfter > -1 && spaceAfter < end + 10) end = spaceAfter;
+    }
+
+    let snippet = text.substring(start, end);
+    
+    // הוספת שלוש נקודות אם נחתך
+    if (start > 0) snippet = '...' + snippet;
+    if (end < text.length) snippet = snippet + '...';
+    
+    // הדגשת מילת החיפוש (אופציונלי - ה-Frontend יכול לעשות זאת גם)
+    snippet = snippet.replace(regex, (match) => `<mark>${match}</mark>`);
+
+    return snippet;
 }

@@ -6,37 +6,58 @@ export async function GET() {
     try {
         await connectDB();
 
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        // קביעת טווח תאריכים: 7 הימים האחרונים (כולל היום)
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        
+        const start = new Date();
+        start.setDate(start.getDate() - 6); // 7 ימים אחורה
+        start.setHours(0, 0, 0, 0);
 
+        // שליפת הנתונים מהמסד (רק דפים שהושלמו בטווח הזמן)
         const stats = await Page.aggregate([
             {
                 $match: {
                     status: 'completed',
-                    completedAt: { $gte: sevenDaysAgo } // רק מהשבוע האחרון
+                    completedAt: { $gte: start, $lte: end }
                 }
             },
             {
                 $group: {
+                    // המרה למחרוזת תאריך YYYY-MM-DD
                     _id: { $dateToString: { format: "%Y-%m-%d", date: "$completedAt" } },
                     count: { $sum: 1 }
                 }
             },
-            { $sort: { _id: 1 } } // מיון לפי תאריך
+            { $sort: { _id: 1 } }
         ]);
 
-        // המרה למבנה שהגרף ב-UI מצפה לו (מערך של ימים)
-        const formattedData = fillMissingDays(stats);
+        // המרה למפה (Map) לגישה מהירה לפי תאריך
+        const statsMap = new Map();
+        stats.forEach(item => statsMap.set(item._id, item.count));
 
-        return NextResponse.json({ success: true, data: formattedData, total: stats.reduce((acc, curr) => acc + curr.count, 0) });
+        // בניית המערך המלא (כולל ימים עם 0 פעילות)
+        const filledData = [];
+        let total = 0;
+
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(start);
+            d.setDate(d.getDate() + i);
+            const dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD
+            
+            const count = statsMap.get(dateStr) || 0;
+            total += count;
+
+            filledData.push({
+                _id: dateStr,
+                date: d.toLocaleDateString('he-IL', { weekday: 'short', day: 'numeric', month: 'numeric' }), // פורמט לתצוגה: "יום א', 12.5"
+                count: count
+            });
+        }
+
+        return NextResponse.json({ success: true, data: filledData, total });
     } catch (error) {
+        console.error('Weekly stats error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
-}
-
-function fillMissingDays(data) {
-    // לוגיקה למילוי ימים חסרים ב-0 כדי שהגרף יראה יפה
-    // (קוד סטנדרטי של JS, אפשר להעתיק מהפרויקט הישן ולהתאים)
-    // ...
-    return data; 
 }
