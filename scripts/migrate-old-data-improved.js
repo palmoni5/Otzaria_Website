@@ -15,6 +15,7 @@ const User = require('../src/models/User.js').default;
 const Message = require('../src/models/Message.js').default;
 const Book = require('../src/models/Book.js').default;
 const Page = require('../src/models/Page.js').default;
+const Upload = require('../src/models/Upload.js').default;
 
 // הגדרות
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/otzaria_db';
@@ -100,6 +101,7 @@ async function clearDatabase() {
     await Message.deleteMany({});
     await Book.deleteMany({});
     await Page.deleteMany({});
+    await Upload.deleteMany({});
     console.log('✅ מסד הנתונים נוקה');
 }
 
@@ -604,6 +606,102 @@ async function migrateBooksAndPages() {
     console.log(`📄 שוחזר תוכן עבור ${pagesWithUploadContent} דפים מקבצי uploads`);
 }
 
+async function migrateUploads() {
+    console.log('\n📤 מתחיל מיגרציה של קבצים שהועלו...');
+    
+    // קריאת תוכן הקבצים מ-files.json
+    const filesData = await readLargeJsonFile('files.json');
+    
+    if (!Array.isArray(filesData)) {
+        console.log('❌ לא נמצאו נתוני קבצים');
+        return;
+    }
+    
+    // סינון קבצי uploads
+    const uploadFiles = filesData.filter(item => 
+        item.path && item.path.includes('data/uploads/') && 
+        item.data && item.data.content
+    );
+    
+    console.log(`📊 נמצאו ${uploadFiles.length} קבצים שהועלו`);
+    
+    let migratedUploads = 0;
+    let uploadsWithoutUser = 0;
+    
+    // קבלת רשימת משתמשים וספרים
+    const users = await User.find();
+    const books = await Book.find();
+    const userIdMapping = new Map();
+    users.forEach(user => {
+        userIdMapping.set(user._id.toString(), user._id);
+    });
+    
+    for (const fileItem of uploadFiles) {
+        try {
+            const fileName = fileItem.path.replace('data/uploads/', '').replace('.txt', '');
+            const content = fileItem.data.content;
+            
+            // ניסיון לחלץ מידע מהשם הקובץ
+            // פורמט: "שם ספר _ עמוד מספר_timestamp.txt"
+            const parts = fileName.split('_');
+            let bookName = 'לא ידוע';
+            let originalFileName = fileName + '.txt';
+            
+            if (parts.length >= 3) {
+                bookName = parts[0].trim();
+                originalFileName = fileName + '.txt';
+            }
+            
+            // מציאת ספר מתאים
+            const matchingBook = books.find(book => 
+                book.name === bookName || 
+                book.name.includes(bookName) || 
+                bookName.includes(book.name)
+            );
+            
+            if (matchingBook) {
+                bookName = matchingBook.name;
+            }
+            
+            // בחירת משתמש ברירת מחדל (מנהל ראשון)
+            const defaultUploader = users.find(user => user.role === 'admin') || users[0];
+            
+            if (!defaultUploader) {
+                console.log(`⚠️ לא נמצא משתמש עבור קובץ ${fileName}`);
+                uploadsWithoutUser++;
+                continue;
+            }
+            
+            // יצירת רשומת Upload
+            const newUpload = new Upload({
+                uploader: defaultUploader._id,
+                bookName: bookName,
+                originalFileName: originalFileName,
+                content: content,
+                status: 'approved', // מניחים שקבצים ישנים מאושרים
+                reviewedBy: defaultUploader._id,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            });
+            
+            await newUpload.save();
+            migratedUploads++;
+            
+            if (migratedUploads % 50 === 0) {
+                console.log(`✅ הועברו ${migratedUploads} קבצים`);
+            }
+            
+        } catch (error) {
+            console.error(`❌ שגיאה בהעברת קובץ ${fileItem.path}:`, error.message);
+        }
+    }
+    
+    console.log(`✅ הושלמה מיגרציה של ${migratedUploads} קבצים שהועלו`);
+    if (uploadsWithoutUser > 0) {
+        console.log(`⚠️ ${uploadsWithoutUser} קבצים לא הועברו בגלל חוסר משתמש`);
+    }
+}
+
 async function validateMigration() {
     console.log('\n🔍 מאמת מיגרציה...');
     
@@ -611,12 +709,14 @@ async function validateMigration() {
     const messageCount = await Message.countDocuments();
     const bookCount = await Book.countDocuments();
     const pageCount = await Page.countDocuments();
+    const uploadCount = await Upload.countDocuments();
     
     console.log(`📊 סיכום מיגרציה:`);
     console.log(`   👥 משתמשים: ${userCount}`);
     console.log(`   💬 הודעות: ${messageCount}`);
     console.log(`   📚 ספרים: ${bookCount}`);
     console.log(`   📄 עמודים: ${pageCount}`);
+    console.log(`   📤 קבצים שהועלו: ${uploadCount}`);
     
     // בדיקות נוספות
     const adminUsers = await User.countDocuments({ role: 'admin' });
@@ -681,6 +781,7 @@ async function main() {
         await migrateUsers();
         await migrateMessages();
         await migrateBooksAndPages();
+        await migrateUploads();
         await validateMigration();
         
         console.log('\n🎉 מיגרציה משופרת הושלמה בהצלחה!');
