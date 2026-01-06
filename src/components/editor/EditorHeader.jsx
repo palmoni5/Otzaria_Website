@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { getAvatarColor, getInitial } from '@/lib/avatar-colors'
 
-export default function EditorHeader({ bookName, pageNumber, bookPath, session }) {
+export default function EditorHeader({ bookName, pageNumber, bookPath, session, saveStatus }) {
   return (
     <header className="glass-strong border-b border-surface-variant sticky top-0 z-40">
       <div className="container mx-auto px-4 py-3">
@@ -31,9 +31,27 @@ export default function EditorHeader({ bookName, pageNumber, bookPath, session }
           </div>
 
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 text-sm text-green-600">
-              <span className="material-symbols-outlined text-base">check_circle</span>
-              <span>נשמר אוטומטית</span>
+            {/* אינדיקטור שמירה דינמי */}
+            <div className="min-w-[120px] flex justify-end">
+              {saveStatus === 'saved' && (
+                <div className="flex items-center gap-2 text-sm text-green-600 animate-in fade-in duration-300">
+                  <span className="material-symbols-outlined text-base">check_circle</span>
+                  <span>נשמר אוטומטית</span>
+                </div>
+              )}
+              {saveStatus === 'saving' && (
+                <div className="flex items-center gap-2 text-sm text-blue-600 animate-in fade-in duration-300">
+                  <span className="material-symbols-outlined text-base animate-spin">sync</span>
+                  <span>שומר...</span>
+                </div>
+              )}
+              {saveStatus === 'error' && (
+                <div className="flex items-center gap-2 text-sm text-red-600 animate-in fade-in duration-300">
+                  <span className="material-symbols-outlined text-base">error</span>
+                  <span>שגיאה בשמירה</span>
+                </div>
+              )}
+              {/* במצב unsaved לא מציגים כלום */}
             </div>
 
             <Link

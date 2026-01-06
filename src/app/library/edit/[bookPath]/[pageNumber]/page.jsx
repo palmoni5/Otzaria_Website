@@ -71,9 +71,10 @@ export default function EditPage() {
   const [showInfoDialog, setShowInfoDialog] = useState(false)
   const [userApiKey, setUserApiKey] = useState('')
   const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash')
-  const [customPrompt, setCustomPrompt] = useState('The text is in Hebrew, written in Rashi script...') // Shortened for brevity
+  const [customPrompt, setCustomPrompt] = useState('The text is in Hebrew, written in Rashi script...') 
 
-  const debouncedSave = useAutoSave()
+  // Auto Save Hook - Destructured to get status
+  const { save: debouncedSave, status: saveStatus } = useAutoSave()
 
   // Load Settings
   useEffect(() => {
@@ -327,7 +328,13 @@ export default function EditPage() {
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden" style={{ cursor: isResizing ? 'col-resize' : 'default' }}>
-      <EditorHeader bookName={bookData?.name} pageNumber={pageNumber} bookPath={bookPath} session={session} />
+      <EditorHeader 
+        bookName={bookData?.name} 
+        pageNumber={pageNumber} 
+        bookPath={bookPath} 
+        session={session} 
+        saveStatus={saveStatus} // העברת הסטטוס להדר
+      />
       
       <EditorToolbar 
         pageNumber={pageNumber} totalPages={bookData?.totalPages}
@@ -370,12 +377,17 @@ export default function EditPage() {
             />
           </div>
           
-          {/* Stats Footer */}
-          <div className="px-4 py-3 border-t border-surface-variant bg-surface/50 text-sm flex justify-between">
+          {/* Stats Footer - מעודכן עם לוגיקת הצגת סטטוס שמירה */}
+          <div className="px-4 py-3 border-t border-surface-variant bg-surface/50 text-sm flex justify-between items-center h-12">
              <div className="flex gap-4">
                 {twoColumns ? <span>ימין: {rightColumn.length}, שמאל: {leftColumn.length}</span> : <span>תווים: {content.length}</span>}
              </div>
-             <div className="text-green-600">נשמר אוטומטית</div>
+             <div>
+                {saveStatus === 'saved' && <span className="text-green-600 font-medium">נשמר אוטומטית</span>}
+                {saveStatus === 'saving' && <span className="text-blue-600 font-medium">שומר...</span>}
+                {saveStatus === 'error' && <span className="text-red-600 font-medium">שגיאה בשמירה</span>}
+                {/* כאשר unsaved לא מציגים כלום */}
+             </div>
           </div>
         </div>
       </div>
