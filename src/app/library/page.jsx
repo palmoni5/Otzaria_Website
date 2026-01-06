@@ -8,7 +8,7 @@ export default function LibraryHome() {
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
-      <SystemNotice />
+
       <main className="flex-1">
         <Hero />
         <Features />
