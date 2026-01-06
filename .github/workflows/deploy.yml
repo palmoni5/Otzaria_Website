@@ -15,6 +15,7 @@ jobs:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.PORT }}
           script: |
             # כנס לתיקיית הפרוייקט (שנה את הנתיב לנתיב האמיתי בשרת שלך)
             cd /var/www/otzaria-web
