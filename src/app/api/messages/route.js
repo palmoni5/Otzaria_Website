@@ -47,6 +47,7 @@ export async function GET(request) {
             status: msg.replies?.length > 0 ? 'replied' : (msg.isRead ? 'read' : 'unread'),
             createdAt: msg.createdAt,
             replies: (msg.replies || []).map(r => ({
+                id: r._id,
                 sender: r.sender?._id || r.sender,
                 senderName: r.sender?.name,
                 senderEmail: r.sender?.email,

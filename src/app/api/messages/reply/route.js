@@ -44,6 +44,10 @@ export async function POST(request) {
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Error replying to message:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        const isDev = process.env.NODE_ENV !== 'production';
+        return NextResponse.json(
+            { error: isDev ? error.message : 'אירעה שגיאה בלתי צפויה' },
+            { status: 500 }
+        );
     }
 }

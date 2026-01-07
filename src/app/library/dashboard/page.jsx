@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [replyingToMessageId, setReplyingToMessageId] = useState(null)
   const [replyText, setReplyText] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
+  const [notice, setNotice] = useState(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -74,7 +75,7 @@ export default function DashboardPage() {
 
   const handleSendMessage = async () => {
     if (!messageSubject.trim() || !messageText.trim()) {
-      alert('נא למלא את כל השדות')
+      setNotice({ type: 'error', text: 'נא למלא את כל השדות' })
       return
     }
 
@@ -92,17 +93,17 @@ export default function DashboardPage() {
 
       const result = await response.json()
       if (result.success) {
-        alert('ההודעה נשלחה בהצלחה למנהלים!')
+        setNotice({ type: 'success', text: 'ההודעה נשלחה בהצלחה למנהלים' })
         setMessageSubject('')
         setMessageText('')
         setShowMessageForm(false)
         loadMyMessages()
       } else {
-        alert(result.error || 'שגיאה בשליחת הודעה')
+        setNotice({ type: 'error', text: result.error || 'שגיאה בשליחת הודעה' })
       }
     } catch (error) {
       console.error('Error sending message:', error)
-      alert('שגיאה בשליחת הודעה')
+      setNotice({ type: 'error', text: 'שגיאה בשליחת הודעה' })
     } finally {
       setSendingMessage(false)
     }
@@ -110,7 +111,7 @@ export default function DashboardPage() {
 
   const handleSendReply = async (messageId) => {
     if (!replyText.trim()) {
-      alert('נא לכתוב תגובה')
+      setNotice({ type: 'error', text: 'נא לכתוב תגובה' })
       return
     }
 
@@ -124,18 +125,31 @@ export default function DashboardPage() {
 
       const result = await response.json()
       if (result.success) {
+        setNotice({ type: 'success', text: 'התגובה נשלחה בהצלחה' })
         setReplyText('')
         setReplyingToMessageId(null)
         loadMyMessages()
       } else {
-        alert(result.error || 'שגיאה בשליחת התגובה')
+        setNotice({ type: 'error', text: result.error || 'שגיאה בשליחת התגובה' })
       }
     } catch (error) {
       console.error('Error sending reply:', error)
-      alert('שגיאה בשליחת התגובה')
+      setNotice({ type: 'error', text: 'שגיאה בשליחת התגובה' })
     } finally {
       setSendingReply(false)
     }
+  }
+
+  const currentUserId = session?.user?._id || session?.user?.id
+  const getReplySenderDisplayName = (reply) => {
+    const replySenderId = reply?.sender
+    if (currentUserId && replySenderId && String(currentUserId) === String(replySenderId)) {
+      return 'אתה'
+    }
+    if (reply?.senderRole === 'admin') {
+      return reply?.senderName || 'מנהל'
+    }
+    return reply?.senderName || 'משתמש'
   }
 
   if (status === 'loading') {
@@ -166,6 +180,26 @@ export default function DashboardPage() {
           <p className="text-on-surface/70 mb-8">
             ברוך הבא לאיזור האישי שלך
           </p>
+
+          {notice && (
+            <div
+              className={`mb-8 p-4 rounded-lg flex items-start justify-between gap-4 ${
+                notice.type === 'success'
+                  ? 'bg-green-50 text-green-800'
+                  : 'bg-red-50 text-red-800'
+              }`}
+              role={notice.type === 'error' ? 'alert' : 'status'}
+            >
+              <p className="font-medium">{notice.text}</p>
+              <button
+                onClick={() => setNotice(null)}
+                className="p-1 rounded-lg hover:bg-black/5 transition-colors"
+                aria-label="סגור הודעה"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+          )}
 
           {/* Stats Cards */}
           <div className="grid md:grid-cols-3 gap-6 mb-12">
@@ -387,20 +421,11 @@ export default function DashboardPage() {
                           <div className="space-y-3">
                             {message.replies.map((reply, idx) => (
                               <div
-                                key={idx}
+                                key={reply?.id || idx}
                                 className={`${reply?.senderRole === 'admin' ? 'bg-green-50' : 'bg-surface'} p-4 rounded-lg`}
                               >
                                 <p className="text-sm text-on-surface/60 mb-2">
-                                  <span className="font-medium">
-                                    {(() => {
-                                      const currentUserId = session?.user?._id || session?.user?.id
-                                      const replySenderId = reply?.sender
-                                      if (currentUserId && replySenderId && String(currentUserId) === String(replySenderId)) {
-                                        return 'אתה'
-                                      }
-                                      return reply?.senderRole === 'admin' ? (reply?.senderName || 'מנהל') : (reply?.senderName || 'משתמש')
-                                    })()}
-                                  </span>
+                                  <span className="font-medium">{getReplySenderDisplayName(reply)}</span>
                                   <span className="mx-2">•</span>
                                   {new Date(reply.createdAt).toLocaleDateString('he-IL', {
                                     day: 'numeric',
@@ -416,54 +441,52 @@ export default function DashboardPage() {
                         </div>
                       )}
 
-                      {message.replies && message.replies.length > 0 && (
-                        <div className="mt-4">
-                          {replyingToMessageId === message.id ? (
-                            <div>
-                              <textarea
-                                className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface"
-                                placeholder="כתוב תגובה למנהלים..."
-                                rows="4"
-                                value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
+                      <div className="mt-4">
+                        {replyingToMessageId === message.id ? (
+                          <div>
+                            <textarea
+                              className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface"
+                              placeholder="כתוב תגובה..."
+                              rows="4"
+                              value={replyText}
+                              onChange={(e) => setReplyText(e.target.value)}
+                              disabled={sendingReply}
+                              autoFocus
+                            />
+                            <div className="flex gap-3 mt-3">
+                              <button
+                                onClick={() => {
+                                  setReplyingToMessageId(null)
+                                  setReplyText('')
+                                }}
                                 disabled={sendingReply}
-                                autoFocus
-                              />
-                              <div className="flex gap-3 mt-3">
-                                <button
-                                  onClick={() => {
-                                    setReplyingToMessageId(null)
-                                    setReplyText('')
-                                  }}
-                                  disabled={sendingReply}
-                                  className="px-6 py-3 glass rounded-lg hover:bg-surface-variant transition-colors disabled:opacity-50"
-                                >
-                                  ביטול
-                                </button>
-                                <button
-                                  onClick={() => handleSendReply(message.id)}
-                                  disabled={sendingReply}
-                                  className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-lg hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  <span className="material-symbols-outlined">send</span>
-                                  <span>{sendingReply ? 'שולח...' : 'שלח תגובה'}</span>
-                                </button>
-                              </div>
+                                className="px-6 py-3 glass rounded-lg hover:bg-surface-variant transition-colors disabled:opacity-50"
+                              >
+                                ביטול
+                              </button>
+                              <button
+                                onClick={() => handleSendReply(message.id)}
+                                disabled={sendingReply}
+                                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-lg hover:bg-accent transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <span className="material-symbols-outlined">send</span>
+                                <span>{sendingReply ? 'שולח...' : 'שלח תגובה'}</span>
+                              </button>
                             </div>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                setReplyingToMessageId(message.id)
-                                setReplyText('')
-                              }}
-                              className="flex items-center gap-2 px-4 py-2 glass rounded-lg hover:bg-surface-variant transition-colors"
-                            >
-                              <span className="material-symbols-outlined">reply</span>
-                              <span>השב</span>
-                            </button>
-                          )}
-                        </div>
-                      )}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setReplyingToMessageId(message.id)
+                              setReplyText('')
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 glass rounded-lg hover:bg-surface-variant transition-colors"
+                          >
+                            <span className="material-symbols-outlined">reply</span>
+                            <span>השב</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
