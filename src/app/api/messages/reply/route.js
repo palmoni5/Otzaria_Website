@@ -37,8 +37,8 @@ export async function POST(request) {
                     createdAt: new Date()
                 }
             },
-            // לסמן כנקרא/לא נקרא בהתאם למי שהגיב
-            isRead: isAdmin ? true : false
+            // כל תגובה חדשה הופכת את השרשור ל"לא נקרא" עבור הצד השני
+            isRead: false
         });
 
         return NextResponse.json({ success: true });

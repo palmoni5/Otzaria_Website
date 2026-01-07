@@ -140,8 +140,8 @@ export default function DashboardPage() {
     }
   }
 
-  const currentUserId = session?.user?._id || session?.user?.id
   const getReplySenderDisplayName = (reply) => {
+    const currentUserId = session?.user?._id || session?.user?.id
     const replySenderId = reply?.sender
     if (currentUserId && replySenderId && String(currentUserId) === String(replySenderId)) {
       return 'אתה'
