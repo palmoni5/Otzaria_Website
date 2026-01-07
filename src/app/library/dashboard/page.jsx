@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import ChangePasswordForm from '@/components/ChangePasswordForm'
@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const [replyText, setReplyText] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
   const [notice, setNotice] = useState(null)
+  const noticeTimeoutRef = useRef(null)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -73,9 +74,33 @@ export default function DashboardPage() {
     }
   }
 
+  const showNoticeWithTimeout = (type, text, duration = 5000) => {
+    setNotice({ type, text })
+
+    if (noticeTimeoutRef.current) {
+      clearTimeout(noticeTimeoutRef.current)
+      noticeTimeoutRef.current = null
+    }
+
+    if (duration) {
+      noticeTimeoutRef.current = setTimeout(() => {
+        setNotice(null)
+        noticeTimeoutRef.current = null
+      }, duration)
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimeoutRef.current) {
+        clearTimeout(noticeTimeoutRef.current)
+      }
+    }
+  }, [])
+
   const handleSendMessage = async () => {
     if (!messageSubject.trim() || !messageText.trim()) {
-      setNotice({ type: 'error', text: 'נא למלא את כל השדות' })
+      showNoticeWithTimeout('error', 'נא למלא את כל השדות')
       return
     }
 
@@ -93,17 +118,17 @@ export default function DashboardPage() {
 
       const result = await response.json()
       if (result.success) {
-        setNotice({ type: 'success', text: 'ההודעה נשלחה בהצלחה למנהלים' })
+        showNoticeWithTimeout('success', 'ההודעה נשלחה בהצלחה למנהלים')
         setMessageSubject('')
         setMessageText('')
         setShowMessageForm(false)
         loadMyMessages()
       } else {
-        setNotice({ type: 'error', text: result.error || 'שגיאה בשליחת הודעה' })
+        showNoticeWithTimeout('error', result.error || 'שגיאה בשליחת הודעה')
       }
     } catch (error) {
       console.error('Error sending message:', error)
-      setNotice({ type: 'error', text: 'שגיאה בשליחת הודעה' })
+      showNoticeWithTimeout('error', 'שגיאה בשליחת הודעה')
     } finally {
       setSendingMessage(false)
     }
@@ -111,7 +136,7 @@ export default function DashboardPage() {
 
   const handleSendReply = async (messageId) => {
     if (!replyText.trim()) {
-      setNotice({ type: 'error', text: 'נא לכתוב תגובה' })
+      showNoticeWithTimeout('error', 'נא לכתוב תגובה')
       return
     }
 
@@ -125,16 +150,16 @@ export default function DashboardPage() {
 
       const result = await response.json()
       if (result.success) {
-        setNotice({ type: 'success', text: 'התגובה נשלחה בהצלחה' })
+        showNoticeWithTimeout('success', 'התגובה נשלחה בהצלחה')
         setReplyText('')
         setReplyingToMessageId(null)
         loadMyMessages()
       } else {
-        setNotice({ type: 'error', text: result.error || 'שגיאה בשליחת התגובה' })
+        showNoticeWithTimeout('error', result.error || 'שגיאה בשליחת התגובה')
       }
     } catch (error) {
       console.error('Error sending reply:', error)
-      setNotice({ type: 'error', text: 'שגיאה בשליחת התגובה' })
+      showNoticeWithTimeout('error', 'שגיאה בשליחת התגובה')
     } finally {
       setSendingReply(false)
     }
