@@ -173,7 +173,7 @@ export default function DashboardPage() {
                   <p className="text-3xl font-bold text-on-surface">
                     {loading ? '...' : stats.myPages}
                   </p>
-                  <p className="text-on-surface/70">סה"כ עמודים שלי</p>
+                  <p className="text-on-surface/70">סה״כ עמודים שלי</p>
                 </div>
               </div>
             </div>
@@ -249,12 +249,18 @@ export default function DashboardPage() {
                         {activity.status === 'completed' ? 'הושלם' : 'בטיפול'} • {activity.date}
                       </p>
                     </div>
-                    <Link 
-                      href={`/library/book/${activity.bookPath}`}
-                      className="text-primary hover:text-accent"
-                    >
-                      <span className="material-symbols-outlined">arrow_back</span>
-                    </Link>
+                    {activity.bookPath && activity.bookPath !== '#' && activity.pageNumber !== null && activity.pageNumber !== undefined ? (
+                      <Link 
+                        href={`/library/edit/${encodeURIComponent(activity.bookPath)}/${activity.pageNumber}`}
+                        className="text-primary hover:text-accent"
+                      >
+                        <span className="material-symbols-outlined">arrow_back</span>
+                      </Link>
+                    ) : (
+                      <span className="text-on-surface/30 cursor-not-allowed" title="לא ניתן לפתוח עמוד זה (ספר חסר)">
+                        <span className="material-symbols-outlined">arrow_back</span>
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
