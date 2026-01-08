@@ -14,7 +14,7 @@ export async function POST(request) {
             return NextResponse.json({ error: 'חסר מזהה הודעה או תוכן תגובה' }, { status: 400 });
         }
 
-        const userId = session?.user?._id || session?.user?.id;
+        const userId = session?.user?._id
         if (!userId) return NextResponse.json({ error: 'לא מורשה' }, { status: 401 });
 
         await connectDB();
