@@ -82,10 +82,12 @@ export default function EditBookInfoDialog({ book, onClose, onSave }) {
     }
   }
 
-  return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
-      <div
-        className="flex flex-col bg-white rounded-2xl w-full max-w-4xl shadow-2xl max-h-[90vh] animate-in zoom-in-95 duration-200"
+  if (!book) return null
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <div 
+        className="flex flex-col bg-white rounded-2xl w-full max-w-4xl shadow-2xl max-h-[90vh]" 
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -102,12 +104,14 @@ export default function EditBookInfoDialog({ book, onClose, onSave }) {
           </button>
         </div>
 
-        {/* Content */}
+        {/* Scrollable Content */}
         <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
           <div className="space-y-6">
             {/* כותרת ראשית */}
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-2">כותרת ראשית</label>
+              <label className="block text-sm font-bold text-gray-900 mb-2">
+                כותרת ראשית
+              </label>
               <input
                 type="text"
                 value={title}
@@ -120,8 +124,13 @@ export default function EditBookInfoDialog({ book, onClose, onSave }) {
             {/* סעיפים */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <label className="block text-sm font-bold text-gray-900">סעיפים</label>
-                <button onClick={addSection} className="flex items-center gap-1 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-bold">
+                <label className="block text-sm font-bold text-gray-900">
+                  סעיפים
+                </label>
+                <button
+                  onClick={addSection}
+                  className="flex items-center gap-1 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-bold"
+                >
                   <span className="material-symbols-outlined text-sm">add</span>
                   <span>הוסף סעיף</span>
                 </button>
@@ -136,9 +145,13 @@ export default function EditBookInfoDialog({ book, onClose, onSave }) {
                         value={section.title}
                         onChange={(e) => updateSectionTitle(sectionIndex, e.target.value)}
                         className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium"
-                        placeholder="כותרת הסעיף"
+                        placeholder="כותרת הסעיף (לדוגמה: כללי, תיוג, שמירה)"
                       />
-                      <button onClick={() => removeSection(sectionIndex)} className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors">
+                      <button
+                        onClick={() => removeSection(sectionIndex)}
+                        className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                        title="מחק סעיף"
+                      >
                         <span className="material-symbols-outlined">delete</span>
                       </button>
                     </div>
@@ -154,12 +167,19 @@ export default function EditBookInfoDialog({ book, onClose, onSave }) {
                             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
                             placeholder="הנחיה..."
                           />
-                          <button onClick={() => removeItem(sectionIndex, itemIndex)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors">
+                          <button
+                            onClick={() => removeItem(sectionIndex, itemIndex)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="מחק הנחיה"
+                          >
                             <span className="material-symbols-outlined text-sm">close</span>
                           </button>
                         </div>
                       ))}
-                      <button onClick={() => addItem(sectionIndex)} className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors mt-2">
+                      <button
+                        onClick={() => addItem(sectionIndex)}
+                        className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors mt-2"
+                      >
                         <span className="material-symbols-outlined text-sm">add</span>
                         <span>הוסף הנחיה</span>
                       </button>
@@ -173,8 +193,28 @@ export default function EditBookInfoDialog({ book, onClose, onSave }) {
 
         {/* Footer */}
         <div className="flex gap-3 p-6 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex-shrink-0">
-          <button onClick={handleSave} disabled={saving} className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold disabled:opacity-70 shadow-md">
-            {saving ? <><span className="material-symbols-outlined animate-spin">progress_activity</span><span>שומר...</span></> : <><span className="material-symbols-outlined">save</span><span>שמור שינויים</span></>}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold disabled:opacity-70 shadow-md hover:-translate-y-0.5 transform"
+          >
+            {saving ? (
+              <>
+                <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                <span>שומר...</span>
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined">save</span>
+                <span>שמור שינויים</span>
+              </>
+            )}
+          </button>
+          <button
+            onClick={onClose}
+            className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+          >
+            ביטול
           </button>
           <button onClick={onClose} className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">ביטול</button>
         </div>

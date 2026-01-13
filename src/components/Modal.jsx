@@ -4,8 +4,16 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 /**
- * Reusable Modal/Dialog component using React Portal
- * Positions the modal relative to the document body to prevent scrolling/stacking issues.
+ * Reusable Modal/Dialog component with consistent styling and behavior
+ * Fixed: Centering in viewport and scrollable content area
+ * @param {Object} props
+ * @param {boolean} props.isOpen - Whether the modal is visible
+ * @param {Function} props.onClose - Callback when modal should close
+ * @param {string} props.title - Modal title
+ * @param {React.ReactNode} props.children - Modal content
+ * @param {Array<Object>} props.buttons - Array of button objects {label, onClick, variant}
+ * @param {boolean} props.closeable - Whether modal can be closed by clicking backdrop
+ * @param {string} props.size - Modal size: 'sm', 'md', 'lg', 'xl' (default: 'md')
  */
 export default function Modal({
   isOpen,
@@ -47,6 +55,7 @@ export default function Modal({
       className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={handleBackdropClick}
     >
+      {/* Modal Container: Flex column to manage header/content/footer layout */}
       <div
         className={`flex flex-col bg-white rounded-2xl w-full ${sizeClasses[size]} shadow-2xl max-h-[90vh] animate-in zoom-in-95 duration-200`}
         onClick={(e) => e.stopPropagation()}

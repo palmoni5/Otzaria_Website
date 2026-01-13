@@ -41,8 +41,13 @@ export default function AdminMessagesPage() {
       const msgsData = await msgsRes.json()
       const usersData = await usersRes.json()
       
-      if (msgsData.success) setMessages(msgsData.messages)
-      if (usersData.success) setUsers(usersData.users.filter(u => u.role !== 'admin'))
+      if (msgsData.success) {
+        setMessages(msgsData.messages)
+      }
+      
+      if (usersData.success) {
+        setUsers(usersData.users.filter(u => u.role !== 'admin'))
+      }
 
     } catch (e) {
       console.error('Error loading data:', e)
@@ -92,6 +97,7 @@ export default function AdminMessagesPage() {
       setMessages(prev => prev.filter(m => m.id !== messageId))
   }
 
+  // --- לוגיקה לשליחת הודעה חדשה ---
   const handleSendNewMessage = async () => {
     if (!newMessageSubject.trim() || !newMessageText.trim()) {
         alert('נא למלא את כל השדות')
@@ -259,6 +265,7 @@ export default function AdminMessagesPage() {
           <div className="space-y-4">
               {messages.map(message => (
                   <div key={message.id} className={`glass p-6 rounded-lg transition-all ${message.status === 'unread' ? 'border-2 border-primary shadow-md' : 'hover:shadow-md'}`}>
+                      {/* ...תוכן ההודעה הקיים... */}
                       <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
@@ -345,7 +352,100 @@ export default function AdminMessagesPage() {
           </div>
       )}
 
-      <MessageModal />
+      {/* --- דיאלוג שליחת הודעה מתוקן --- */}
+      {showSendMessageDialog && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setShowSendMessageDialog(false)}
+          >
+              <div 
+                className="flex flex-col bg-white glass-strong rounded-2xl w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200"
+                onClick={e => e.stopPropagation()}
+              >
+                  {/* Fixed Header */}
+                  <div className="p-6 border-b border-gray-200 flex-shrink-0 bg-white/50 rounded-t-2xl">
+                      <h3 className="text-2xl font-bold text-on-surface flex items-center gap-3">
+                          <span className="material-symbols-outlined text-3xl text-primary">send</span>
+                          שלח הודעה למשתמשים
+                      </h3>
+                  </div>
+                  
+                  {/* Scrollable Content */}
+                  <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
+                      <div>
+                          <label className="block text-sm font-bold text-on-surface mb-2">נמען</label>
+                          <select 
+                              value={newMessageRecipient}
+                              onChange={(e) => setNewMessageRecipient(e.target.value)}
+                              className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface shadow-sm"
+                              disabled={sendingNewMessage}
+                          >
+                              <option value="all">כל המשתמשים (הודעת מערכת)</option>
+                              {users.map(user => (
+                                  <option key={user._id} value={user.id}>{user.name} ({user.email})</option>
+                              ))}
+                          </select>
+                      </div>
+
+                      <div>
+                          <label className="block text-sm font-bold text-on-surface mb-2">נושא</label>
+                          <input 
+                              type="text"
+                              value={newMessageSubject}
+                              onChange={(e) => setNewMessageSubject(e.target.value)}
+                              placeholder="נושא ההודעה..."
+                              className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface shadow-sm"
+                              disabled={sendingNewMessage}
+                          />
+                      </div>
+                      
+                      <div>
+                          <label className="block text-sm font-bold text-on-surface mb-2">תוכן ההודעה</label>
+                          <textarea 
+                              value={newMessageText}
+                              onChange={(e) => setNewMessageText(e.target.value)}
+                              placeholder="כתוב את ההודעה שלך כאן..."
+                              className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface shadow-sm min-h-[150px] resize-none"
+                              disabled={sendingNewMessage}
+                          />
+                      </div>
+                  </div>
+
+                  {/* Fixed Footer */}
+                  <div className="flex gap-3 p-6 border-t border-gray-200 bg-gray-50/50 rounded-b-2xl flex-shrink-0">
+                      <button 
+                          onClick={handleSendNewMessage}
+                          disabled={sendingNewMessage}
+                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-lg hover:bg-accent transition-all shadow-md font-bold disabled:opacity-70 disabled:cursor-not-allowed hover:-translate-y-0.5"
+                      >
+                          {sendingNewMessage ? (
+                              <>
+                                <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                                <span>שולח...</span>
+                              </>
+                          ) : (
+                              <>
+                                <span className="material-symbols-outlined">send</span>
+                                <span>שלח הודעה</span>
+                              </>
+                          )}
+                      </button>
+                      <button 
+                          onClick={() => {
+                              setShowSendMessageDialog(false)
+                              setNewMessageSubject('')
+                              setNewMessageText('')
+                              setNewMessageRecipient('all')
+                          }}
+                          disabled={sendingNewMessage}
+                          className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                      >
+                          ביטול
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   )
 }
