@@ -1,15 +1,11 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
+
 /**
- * Reusable Modal/Dialog component with consistent styling and behavior
- * @param {Object} props
- * @param {boolean} props.isOpen - Whether the modal is visible
- * @param {Function} props.onClose - Callback when modal should close
- * @param {string} props.title - Modal title
- * @param {React.ReactNode} props.children - Modal content
- * @param {Array<Object>} props.buttons - Array of button objects {label, onClick, variant}
- * @param {boolean} props.closeable - Whether modal can be closed by clicking backdrop
- * @param {string} props.size - Modal size: 'sm', 'md', 'lg', 'xl' (default: 'md')
+ * Reusable Modal/Dialog component using React Portal
+ * Positions the modal relative to the document body to prevent scrolling/stacking issues.
  */
 export default function Modal({
   isOpen,
@@ -20,7 +16,20 @@ export default function Modal({
   closeable = true,
   size = 'md'
 }) {
-  if (!isOpen) return null
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    // מניעת גלילה של הרקע כשהמודל פתוח
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+    }
+  }, [isOpen])
+
+  if (!isOpen || !mounted) return null
 
   const sizeClasses = {
     sm: 'max-w-sm',
@@ -33,55 +42,49 @@ export default function Modal({
     if (closeable) onClose()
   }
 
-  const handleContentClick = (e) => {
-    e.stopPropagation()
-  }
-
-  return (
+  const modalContent = (
     <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={handleBackdropClick}
     >
       <div
-        className={`bg-white rounded-2xl w-full ${sizeClasses[size]} p-6 shadow-xl max-h-[90vh] overflow-y-auto`}
-        onClick={handleContentClick}
+        className={`flex flex-col bg-white rounded-2xl w-full ${sizeClasses[size]} shadow-2xl max-h-[90vh] animate-in zoom-in-95 duration-200`}
+        onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        {title && (
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
-            {closeable && (
-              <button
-                onClick={onClose}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
-                aria-label="Close modal"
-              >
-                <span className="material-symbols-outlined text-3xl">close</span>
-              </button>
-            )}
-          </div>
-        )}
+        {/* Header - Fixed */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 flex-shrink-0">
+          <h2 className="text-2xl font-bold text-gray-900 line-clamp-1">{title}</h2>
+          {closeable && (
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 p-2 rounded-full transition-colors"
+              aria-label="Close modal"
+            >
+              <span className="material-symbols-outlined text-2xl block">close</span>
+            </button>
+          )}
+        </div>
 
-        {/* Content */}
-        <div className="mb-6">
+        {/* Content - Scrollable */}
+        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
           {children}
         </div>
 
-        {/* Footer - Buttons */}
+        {/* Footer - Fixed */}
         {buttons.length > 0 && (
-          <div className="flex gap-3 justify-end mt-6">
+          <div className="flex gap-3 justify-end p-6 border-t border-gray-100 flex-shrink-0 bg-gray-50/50 rounded-b-2xl">
             {buttons.map((button, index) => (
               <button
                 key={index}
                 onClick={button.onClick}
                 disabled={button.disabled}
-                className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                className={`px-6 py-2.5 rounded-lg font-bold transition-colors shadow-sm ${
                   button.variant === 'secondary'
-                    ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+                    ? 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                     : button.variant === 'danger'
                     ? 'bg-red-600 text-white hover:bg-red-700'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
-                } ${button.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    : 'bg-primary text-on-primary hover:bg-accent'
+                } ${button.disabled ? 'opacity-50 cursor-not-allowed' : 'hover:-translate-y-0.5'}`}
               >
                 {button.label}
               </button>
@@ -91,4 +94,6 @@ export default function Modal({
       </div>
     </div>
   )
+
+  return createPortal(modalContent, document.body)
 }
