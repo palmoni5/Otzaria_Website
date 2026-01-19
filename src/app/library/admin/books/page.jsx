@@ -33,18 +33,19 @@ export default function AdminBooksPage() {
     loadBooks()
   }, [])
 
-  const handleDeleteBook = async (bookPath) => {
+  const handleDeleteBook = async (bookId) => { // שנה מ-bookPath ל-bookId
     if (!confirm('האם אתה בטוח שברצונך למחוק את הספר? כל העמודים והמידע יימחקו לצמיתות!')) return
 
     try {
       const response = await fetch('/api/admin/books/delete', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookPath })
+        body: JSON.stringify({ bookId }) // שנה כאן ל-bookId
       })
       const result = await response.json()
       if (result.success) {
-        setBooks(prev => prev.filter(b => b.path !== bookPath))
+        // עדכון הסטייט המקומי כדי להסיר את הספר מהרשימה
+        setBooks(prev => prev.filter(b => b.id !== bookId)) 
         alert('הספר נמחק בהצלחה!')
       } else {
         alert(result.error || 'שגיאה במחיקה')
@@ -168,7 +169,7 @@ export default function AdminBooksPage() {
                         </button>
                       </div>
                       <button
-                          onClick={() => handleDeleteBook(book.path)}
+                          onClick={() => handleDeleteBook(book.id)}
                           className="w-full mt-2 flex items-center justify-center gap-1 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm transition-colors opacity-60 hover:opacity-100"
                         >
                           <span className="material-symbols-outlined text-sm">delete</span>

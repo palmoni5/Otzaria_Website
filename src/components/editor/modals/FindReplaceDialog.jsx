@@ -36,7 +36,17 @@ export default function FindReplaceDialog({
 
         <div className="p-6 space-y-5">
           <div>
-            <label className="block text-sm font-bold text-on-surface mb-2">חפש:</label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-bold text-on-surface">חפש:</label>
+              <button 
+                onClick={() => setFindText(prev => prev + '^13')}
+                className="text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-300 transition-colors flex items-center gap-1"
+                title="הוסף סימן מעבר שורה"
+              >
+                <span className="material-symbols-outlined text-xs">keyboard_return</span>
+                הוסף מעבר שורה (^13)
+              </button>
+            </div>
             <input
               type="text"
               value={findText}
@@ -49,7 +59,16 @@ export default function FindReplaceDialog({
           </div>
 
           <div>
-            <label className="block text-sm font-bold text-on-surface mb-2">החלף ב:</label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-sm font-bold text-on-surface">החלף ב:</label>
+              <button 
+                onClick={() => setReplaceText(prev => prev + '^13')}
+                className="text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-700 px-2 py-1 rounded border border-gray-300 transition-colors flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-xs">keyboard_return</span>
+                הוסף מעבר שורה
+              </button>
+            </div>
             <input
               type="text"
               value={replaceText}

@@ -229,27 +229,59 @@ export default function EditPage() {
   }
 
   const handleFindReplace = (replaceAll = false) => {
-    if (!findText) return alert('הזן טקסט לחיפוש')
+    if (!findText) return alert('הזן טקסט לחיפוש');
     
-    const regex = new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')
-    let count = 0
+    // פונקציית עזר להמרת ^13 למעבר שורה אמיתי
+    const processPattern = (str) => str.replaceAll('^13', '\n');
     
+    const pattern = processPattern(findText);
+    const replacement = processPattern(replaceText);
+    
+    let totalOccurrences = 0;
+
+    // פונקציה פנימית לביצוע ההחלפה וספירת המופעים
+    const executeReplace = (text) => {
+      if (!text || !pattern) return text;
+      
+      const parts = text.split(pattern);
+      const count = parts.length - 1; // מספר הפעמים שהטקסט נמצא
+      
+      if (count === 0) return text;
+
+      if (replaceAll) {
+        totalOccurrences += count;
+        return parts.join(replacement);
+      } else {
+        totalOccurrences += 1;
+        return text.replace(pattern, replacement);
+      }
+    };
+
     if (twoColumns) {
-        const newRight = replaceAll ? rightColumn.replaceAll(findText, replaceText) : rightColumn.replace(findText, replaceText)
-        const newLeft = replaceAll ? leftColumn.replaceAll(findText, replaceText) : leftColumn.replace(findText, replaceText)
-        if (newRight !== rightColumn) count++
-        if (newLeft !== leftColumn) count++
-        setRightColumn(newRight)
-        setLeftColumn(newLeft)
-        handleAutoSaveWrapper(content, newLeft, newRight, true)
+      const newRight = executeReplace(rightColumn);
+      const newLeft = executeReplace(leftColumn);
+      
+      if (totalOccurrences > 0) {
+        setRightColumn(newRight);
+        setLeftColumn(newLeft);
+        handleAutoSaveWrapper(content, newLeft, newRight, true);
+      }
     } else {
-        const newContent = replaceAll ? content.replaceAll(findText, replaceText) : content.replace(findText, replaceText)
-        if (newContent !== content) count++
-        setContent(newContent)
-        handleAutoSaveWrapper(newContent, leftColumn, rightColumn, false)
+      const newContent = executeReplace(content);
+      
+      if (totalOccurrences > 0) {
+        setContent(newContent);
+        handleAutoSaveWrapper(newContent, leftColumn, rightColumn, false);
+      }
     }
-    alert(count > 0 ? 'בוצע' : 'לא נמצאו תוצאות')
-  }
+
+    // הודעת פידבק למשתמש
+    if (totalOccurrences > 0) {
+      alert(`ההחלפה בוצעה בהצלחה! הוחלפו ${totalOccurrences} מופעים.`);
+    } else {
+      alert('לא נמצאו תוצאות התואמות לחיפוש.');
+    }
+  };
 
   const insertTag = (tag) => {
     let activeEl = document.activeElement;
