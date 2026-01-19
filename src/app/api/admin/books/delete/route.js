@@ -28,15 +28,15 @@ export async function DELETE(request) {
         const book = await Book.findById(bookId);
         if (!book) return NextResponse.json({ error: 'Book not found' }, { status: 404 });
 
-        // 2. מחיקת קבצים פיזיים
-        // book.folderPath בדרך כלל נראה כך: /uploads/books/some-book-name
-        // אנו מנקים את הלוכסן בהתחלה כדי לחבר אותו נכון לנתיב התיקייה הנוכחית + public
-        const relativePath = book.folderPath.startsWith('/') ? book.folderPath.slice(1) : book.folderPath;
-        const fullPath = path.join(process.cwd(), 'public', relativePath);
+        if (book.folderPath) { // בדיקה שהשדה קיים
+            const relativePath = book.folderPath.startsWith('/') ? book.folderPath.slice(1) : book.folderPath;
+            const fullPath = path.join(process.cwd(), 'public', relativePath);
 
-        // בדיקת בטיחות בסיסית לפני מחיקה פיזית (לוודא שאנחנו בתיקיית uploads)
-        if (fullPath.includes('uploads') && await fs.pathExists(fullPath)) {
-            await fs.remove(fullPath);
+            if (fullPath.includes('uploads') && await fs.pathExists(fullPath)) {
+                await fs.remove(fullPath);
+            }
+        } else {
+            console.warn(`Book ${bookId} has no folderPath, skipping physical file deletion.`);
         }
 
         // 3. מחיקת כל העמודים המשויכים לספר מה-DB

@@ -9,7 +9,8 @@ const BookSchema = new mongoose.Schema({
   category: { type: String },
   author: { type: String },
   description: { type: String },
-  editingInfo: { type: Object }, 
+  editingInfo: { type: Object },
+  folderPath: { type: String }, 
 }, { timestamps: true });
 
 // אינדקסים לביצועים
