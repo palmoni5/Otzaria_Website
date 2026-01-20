@@ -326,7 +326,9 @@ export default function DashboardPage() {
               </div>
             ) : stats.recentActivity && stats.recentActivity.length > 0 ? (
               <div className="space-y-4">
-                {stats.recentActivity.map((activity) => (
+                {[...stats.recentActivity].sort((a, b) => {
+                  return (a.status === 'completed') - (b.status === 'completed');
+                }).map((activity) => (
                   <div key={`${activity.bookName}-${activity.pageNumber}`} className="flex items-center gap-4 p-4 bg-surface rounded-lg">
                     <span className={`material-symbols-outlined ${
                       activity.status === 'completed' ? 'text-green-600' : 'text-blue-600'

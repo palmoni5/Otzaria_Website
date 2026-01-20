@@ -12,7 +12,7 @@ export default function LibraryBooksPage() {
   const [flatBooks, setFlatBooks] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState('all')
+  const [filterStatus, setFilterStatus] = useState('available')
   
   useEffect(() => {
     const fetchData = async () => {
@@ -112,6 +112,21 @@ export default function LibraryBooksPage() {
                         
                         {/* Filter Tabs */}
                         <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0 no-scrollbar">
+                            {['available', 'in-progress', 'completed'].map(key => {
+                                const config = statusConfig[key]
+                                return (
+                                    <button
+                                        key={key}
+                                        onClick={() => setFilterStatus(key)}
+                                        className={`px-4 py-2 rounded-xl font-medium flex items-center gap-2 whitespace-nowrap text-sm border-2 transition-all ${filterStatus === key 
+                                            ? 'bg-primary text-on-primary border-primary' 
+                                            : 'bg-white text-on-surface border-surface-variant hover:border-primary/50'}`}
+                                    >
+                                        <span className="material-symbols-outlined text-lg">{config.icon}</span>
+                                        <span>{config.label}</span>
+                                    </button>
+                                )
+                            })}
                             <button
                                 onClick={() => setFilterStatus('all')}
                                 className={`px-4 py-2 rounded-xl font-medium whitespace-nowrap text-sm border-2 transition-all ${filterStatus === 'all' 
@@ -120,18 +135,6 @@ export default function LibraryBooksPage() {
                             >
                                 כל הספרים
                             </button>
-                            {Object.entries(statusConfig).map(([key, config]) => (
-                                <button
-                                    key={key}
-                                    onClick={() => setFilterStatus(key)}
-                                    className={`px-4 py-2 rounded-xl font-medium flex items-center gap-2 whitespace-nowrap text-sm border-2 transition-all ${filterStatus === key 
-                                        ? 'bg-primary text-on-primary border-primary' 
-                                        : 'bg-white text-on-surface border-surface-variant hover:border-primary/50'}`}
-                                >
-                                    <span className="material-symbols-outlined text-lg">{config.icon}</span>
-                                    <span>{config.label}</span>
-                                </button>
-                            ))}
                         </div>
                     </div>
                 </div>
