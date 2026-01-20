@@ -327,9 +327,7 @@ export default function DashboardPage() {
             ) : stats.recentActivity && stats.recentActivity.length > 0 ? (
               <div className="space-y-4">
                 {[...stats.recentActivity].sort((a, b) => {
-                  if (a.status !== 'completed' && b.status === 'completed') return -1;
-                  if (a.status === 'completed' && b.status !== 'completed') return 1;
-                  return 0;
+                  return (a.status === 'completed') - (b.status === 'completed');
                 }).map((activity) => (
                   <div key={`${activity.bookName}-${activity.pageNumber}`} className="flex items-center gap-4 p-4 bg-surface rounded-lg">
                     <span className={`material-symbols-outlined ${
