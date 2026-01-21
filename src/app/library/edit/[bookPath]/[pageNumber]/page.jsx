@@ -91,6 +91,7 @@ export default function EditPage() {
     const savedPanelWidth = localStorage.getItem('imagePanelWidth')
     const savedOrientation = localStorage.getItem('layoutOrientation')
     const savedSwap = localStorage.getItem('swapPanels')
+    const savedFont = localStorage.getItem('selectedFont')
     
     if (savedApiKey) setUserApiKey(savedApiKey)
     if (savedPrompt) setCustomPrompt(savedPrompt)
@@ -98,6 +99,7 @@ export default function EditPage() {
     if (savedPanelWidth) setImagePanelWidth(parseFloat(savedPanelWidth))
     if (savedOrientation) setLayoutOrientation(savedOrientation)
     if (savedSwap) setSwapPanels(savedSwap === 'true')
+    if (savedFont) setSelectedFont(savedFont)
   }, [])
 
   // Full Screen Handler
@@ -178,6 +180,11 @@ const loadPageData = async () => {
   }
 
   // --- Handlers ---
+
+  const handleFontChange = (newFont) => {
+    setSelectedFont(newFont)
+    localStorage.setItem('selectedFont', newFont)
+  }
 
   const togglePanelOrder = () => {
     const newState = !swapPanels
@@ -544,7 +551,7 @@ const completePageLogic = async () => {
         handleOCRSelection={handleOCR} setSelectionRect={setSelectionRect}
         setIsSelectionMode={setIsSelectionMode} insertTag={insertTag}
         setShowFindReplace={setShowFindReplace}
-        selectedFont={selectedFont} setSelectedFont={setSelectedFont}
+        selectedFont={selectedFont} setSelectedFont={handleFontChange}
         twoColumns={twoColumns} toggleColumns={toggleColumns}
         layoutOrientation={layoutOrientation} setLayoutOrientation={setLayoutOrientation}
         swapPanels={swapPanels}
