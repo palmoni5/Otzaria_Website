@@ -322,12 +322,19 @@ const completePageLogic = async () => {
       
       let newSize 
       if (layoutOrientation === 'horizontal') {
-        newSize = ((e.clientY - rect.top) / rect.height) * 100 
+        // בפריסה אופקית (תמונה למעלה/למטה)
+        newSize = swapPanels 
+          ? ((rect.bottom - e.clientY) / rect.height) * 100 // תמונה למטה: מרחק מהתחתית
+          : ((e.clientY - rect.top) / rect.height) * 100    // תמונה למעלה: מרחק מהלמעלה
       } else {
-        if (swapPanels) {
-             newSize = ((e.clientX - rect.left) / rect.width) * 100
-        } else {
-             newSize = ((rect.right - e.clientX) / rect.width) * 100
+        // בפריסה אנכית (ימין/שמאל) - מותאם ל-RTL
+        if (swapPanels) { 
+            // פאנל התמונה בצד שמאל (בגלל row-reverse ב-RTL)
+            newSize = ((e.clientX - rect.left) / rect.width) * 100
+        } else { 
+            // פאנל התמונה בצד ימין (ברירת מחדל ב-RTL)
+            // החישוב צריך להיות המרחק מהקצה הימני
+            newSize = ((rect.right - e.clientX) / rect.width) * 100
         }
       }
       setImagePanelWidth(Math.min(Math.max(newSize, 20), 80))
