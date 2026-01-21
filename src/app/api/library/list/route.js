@@ -2,17 +2,25 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Book from '@/models/Book';
 import Page from '@/models/Page';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
+
+    const session = await getServerSession(authOptions);
+    const isAdmin = session?.user?.role === 'admin';
+
     await connectDB();
+
+    const query = isAdmin ? {} : { isHidden: { $ne: true } };
 
     // 1. שליפת כל הספרים
     // אנחנו משתמשים ב-lean() לביצועים מהירים יותר
-    const books = await Book.find({})
-      .select('name slug totalPages category updatedAt')
+    const books = await Book.find(query)
+      .select('name slug totalPages category updatedAt isHidden')
       .sort({ updatedAt: -1 })
       .lean();
 
@@ -56,7 +64,8 @@ export async function GET() {
         category: book.category || 'כללי',
         // חישוב סטטוס כללי של הספר
         status: bookStats.completed === book.totalPages ? 'completed' : 'in-progress',
-        lastUpdated: book.updatedAt
+        lastUpdated: book.updatedAt,
+        isHidden: book.isHidden || false,
       };
     });
 

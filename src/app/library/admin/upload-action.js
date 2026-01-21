@@ -25,6 +25,7 @@ export async function uploadBookAction(formData) {
     const file = formData.get('pdf');
     const bookName = formData.get('bookName');
     const category = formData.get('category') || 'כללי';
+    const isHidden = formData.get('isHidden') === 'true';
 
     if (!file || !bookName) {
       return { success: false, error: 'חסרים נתונים' };
@@ -70,7 +71,8 @@ export async function uploadBookAction(formData) {
       category: category,
       folderPath: `/uploads/books/${slug}`,
       totalPages: result.length,
-      completedPages: 0
+      completedPages: 0,
+      isHidden: isHidden
     });
 
     // 6. יצירת העמודים ב-DB

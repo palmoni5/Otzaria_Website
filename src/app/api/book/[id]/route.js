@@ -11,6 +11,7 @@ export async function GET(request, { params }) {
     if (!session) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    const isAdmin = session?.user?.role === 'admin';
     
     await connectDB();
     
@@ -27,6 +28,10 @@ export async function GET(request, { params }) {
     
     if (!book) {
       return NextResponse.json({ success: false, error: 'הספר לא נמצא' }, { status: 404 });
+    }
+
+    if (!isAdmin && book.isHidden) {
+      return NextResponse.json({ success: false, error: 'אין הרשאות לצפייה בספר זה' }, { status: 403 });
     }
 
     // 2. מציאת כל העמודים של הספר

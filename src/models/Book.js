@@ -10,10 +10,12 @@ const BookSchema = new mongoose.Schema({
   author: { type: String },
   description: { type: String },
   editingInfo: { type: Object },
-  folderPath: { type: String }, 
+  folderPath: { type: String },
+  isHidden: { type: Boolean, default: false },
 }, { timestamps: true });
 
 // אינדקסים לביצועים
+BookSchema.index({ isHidden: 1 });
 BookSchema.index({ category: 1 });
 BookSchema.index({ name: 'text', description: 'text' }); // לחיפוש מהיר
 

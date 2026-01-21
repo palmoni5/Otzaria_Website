@@ -11,6 +11,7 @@ export default function AddBookDialog({ isOpen, onClose, onBookAdded }) {
     const [isUploading, setIsUploading] = useState(false)
     const [error, setError] = useState(null)
     const [category, setCategory] = useState('כללי')
+    const [isHidden, setIsHidden] = useState(false);
 
     const handleFileSelect = (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -43,6 +44,7 @@ export default function AddBookDialog({ isOpen, onClose, onBookAdded }) {
         formData.append('pdf', file)
         formData.append('bookName', bookName)
         formData.append('category', category)
+        formData.append('isHidden', isHidden);
 
         try {
             const result = await uploadBookAction(formData)
@@ -124,6 +126,20 @@ export default function AddBookDialog({ isOpen, onClose, onBookAdded }) {
                           hover:file:bg-blue-100
                           disabled:opacity-50"
                     />
+                </div>
+
+                <div className="flex items-center gap-2 py-2">
+                    <input
+                        type="checkbox"
+                        id="isHidden"
+                        checked={isHidden}
+                        onChange={(e) => setIsHidden(e.target.checked)}
+                        className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded"
+                    />
+                    <label htmlFor="isHidden" className="text-sm font-bold text-gray-700 flex items-center gap-1 cursor-pointer">
+                        <span className="material-symbols-outlined text-sm">visibility_off</span>
+                        ספר מוסתר (יוצג למנהלים בלבד)
+                    </label>
                 </div>
 
                 {error && (

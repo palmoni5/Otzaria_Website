@@ -7,7 +7,7 @@ services:
       - "3000:3000"
     environment:
       # משתנים אלו יטענו מקובץ .env שיושב באותו שרת, אך לא בגיט
-      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_URI=${MONGODB_URI_DOCKER}
       - NEXTAUTH_URL=${NEXTAUTH_URL}
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - GEMINI_API_KEY=${GEMINI_API_KEY}

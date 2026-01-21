@@ -55,6 +55,30 @@ export default function AdminBooksPage() {
     }
   }
 
+  const toggleVisibility = async (bookId, currentHiddenStatus) => {
+    try {
+        const response = await fetch('/api/admin/books/update', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                bookId: bookId, 
+                isHidden: !currentHiddenStatus 
+            })
+        });
+        
+        if (response.ok) {
+            // עדכון הסטייט המקומי מיידית כדי לחסוך טעינה מהשרת
+            setBooks(prev => prev.map(b => 
+                b.id === bookId ? { ...b, isHidden: !currentHiddenStatus } : b
+            ));
+        } else {
+            alert('שגיאה בעדכון הסטטוס');
+        }
+    } catch (e) {
+        alert('תקלה בתקשורת');
+    }
+  };
+
   const filteredBooks = books.filter(book => 
     book.name.toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -106,9 +130,10 @@ export default function AdminBooksPage() {
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
           {filteredBooks.map(book => {
+              const isHidden = book.isHidden === true;
               const progress = book.totalPages > 0 ? Math.round((book.completedPages / book.totalPages) * 100) : 0;
               return (
-                <div key={book.id || book.path} className="group glass p-0 rounded-xl border border-white/50 hover:border-primary/50 transition-all hover:shadow-lg overflow-hidden flex flex-col">
+                <div key={book.id || book.path} className={`group glass p-0 rounded-xl border transition-all hover:shadow-lg overflow-hidden flex flex-col ${isHidden ? 'border-amber-200 bg-amber-50/30' : 'border-white/50'}`}>
                   {/* Header/Image Area */}
                   <div className="bg-gradient-to-b from-primary/5 to-transparent p-4 flex items-start justify-between">
                     <div className="flex gap-3">
@@ -127,15 +152,23 @@ export default function AdminBooksPage() {
                         )}
                         <div>
                             <h3 className="font-bold text-on-surface line-clamp-1 text-lg" title={book.name}>{book.name}</h3>
-                            <span className="text-xs text-gray-500 bg-white/50 px-2 py-0.5 rounded-full border border-gray-100">
-                                {book.category || 'כללי'}
-                            </span>
+                            <div className="flex flex-wrap gap-2 items-center">
+                                <span className="text-xs text-gray-500 bg-white/50 px-2 py-0.5 rounded-full border border-gray-100">
+                                    {book.category || 'כללי'}
+                                </span>
+                                {isHidden && (
+                                    <span className="bg-amber-600 text-white text-[10px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-[12px]">visibility_off</span>
+                                        מוסתר
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     </div>
                   </div>
 
                   {/* Content Area */}
-                  <div className="p-4 pt-2 flex-1">
+                  <div className="p-4 pt-2 flex-1 flex flex-col">
                       <div className="mt-2 mb-4">
                         <div className="flex justify-between text-xs text-gray-600 mb-1">
                             <span>התקדמות</span>
@@ -152,29 +185,51 @@ export default function AdminBooksPage() {
                         </p>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 mt-auto">
-                        <Link
-                          href={`/library/book/${encodeURIComponent(book.path)}`}
-                          className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-sm font-medium transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-sm">visibility</span>
-                          צפה
-                        </Link>
-                        <button
-                          onClick={() => setEditingBookInfo(book)}
-                          className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-sm">edit_note</span>
-                          פרטים
-                        </button>
+                      <div className="mt-auto space-y-2">
+                        {/* שורת כפתורי ניווט */}
+                        <div className="grid grid-cols-2 gap-2">
+                            <Link
+                                href={`/library/book/${encodeURIComponent(book.path)}`}
+                                className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-sm font-medium transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-sm">visibility</span>
+                                צפה
+                            </Link>
+                            <button
+                                onClick={() => setEditingBookInfo(book)}
+                                className="flex items-center justify-center gap-1 px-3 py-2 bg-gray-50 text-gray-700 hover:bg-gray-100 rounded-lg text-sm font-medium transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-sm">edit_note</span>
+                                פרטים
+                            </button>
+                        </div>
+
+                        {/* שורת כפתורי ניהול */}
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => toggleVisibility(book.id, isHidden)}
+                                className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                                    isHidden 
+                                    ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' 
+                                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200 hover:text-gray-700'
+                                }`}
+                                title={isHidden ? "הפוך לספר גלוי לכולם" : "הסתר ספר מהציבור"}
+                            >
+                                <span className="material-symbols-outlined text-sm">
+                                    {isHidden ? 'visibility_off' : 'visibility'}
+                                </span>
+                                <span>{isHidden ? 'מוסתר' : 'גלוי'}</span>
+                            </button>
+
+                            <button
+                                onClick={() => handleDeleteBook(book.id)}
+                                className="flex-1 flex items-center justify-center gap-1 px-3 py-2 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg text-sm transition-colors font-medium"
+                            >
+                                <span className="material-symbols-outlined text-sm">delete</span>
+                                <span>מחק</span>
+                            </button>
+                        </div>
                       </div>
-                      <button
-                          onClick={() => handleDeleteBook(book.id)}
-                          className="w-full mt-2 flex items-center justify-center gap-1 px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg text-sm transition-colors opacity-60 hover:opacity-100"
-                        >
-                          <span className="material-symbols-outlined text-sm">delete</span>
-                          מחק ספר
-                        </button>
                   </div>
                 </div>
               )

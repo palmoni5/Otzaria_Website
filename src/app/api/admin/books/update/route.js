@@ -11,7 +11,7 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { bookId, name, category, author, description } = await request.json();
+    const { bookId, name, category, author, description, isHidden } = await request.json();
     await connectDB();
 
     // בדיקה ששם הספר לא תפוס ע"י ספר אחר (אם השם השתנה)
@@ -24,7 +24,7 @@ export async function PUT(request) {
 
     const updatedBook = await Book.findByIdAndUpdate(
         bookId,
-        { name, category, author, description },
+        { name, category, author, description, isHidden },
         { new: true }
     );
 
