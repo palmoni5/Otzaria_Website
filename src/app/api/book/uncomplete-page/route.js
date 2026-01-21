@@ -1,0 +1,53 @@
+import { NextResponse } from 'next/server';
+import connectDB from '@/lib/db';
+import Page from '@/models/Page';
+import Book from '@/models/Book';
+import User from '@/models/User';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+
+export async function POST(request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const { pageId } = await request.json();
+    await connectDB();
+
+    const page = await Page.findOneAndUpdate(
+      { _id: pageId, claimedBy: session.user._id, status: 'completed' },
+      { 
+        $set: { status: 'in-progress' }, 
+        $unset: { completedAt: 1 }  
+      },
+      { new: true }
+    ).populate('claimedBy', 'name email');
+
+    if (!page) {
+      return NextResponse.json({ error: 'Page update failed or page not found' }, { status: 400 });
+    }
+
+    await Book.findByIdAndUpdate(page.book, { $inc: { completedPages: -1 } });
+
+    await User.findByIdAndUpdate(session.user._id, { $inc: { points: -10 } });
+
+    return NextResponse.json({ 
+        success: true, 
+        message: 'הסימון בוטל בהצלחה',
+        page: { 
+            id: page._id,
+            number: page.pageNumber,
+            status: page.status,
+            thumbnail: page.imagePath,
+            claimedBy: page.claimedBy ? page.claimedBy.name : null,
+            claimedById: page.claimedBy ? page.claimedBy._id : null,
+            claimedAt: page.claimedAt,
+            completedAt: null 
+        }
+    });
+
+  } catch (error) {
+    console.error('Error uncompleting page:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
