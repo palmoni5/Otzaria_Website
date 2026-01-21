@@ -39,13 +39,14 @@ export default function EditPage() {
   const [twoColumns, setTwoColumns] = useState(false)
   const [activeTextarea, setActiveTextarea] = useState(null)
   const [selectedFont, setSelectedFont] = useState('monospace')
-  
+   
   // Layout State
   const [imageZoom, setImageZoom] = useState(100)
   const [layoutOrientation, setLayoutOrientation] = useState('vertical')
   const [imagePanelWidth, setImagePanelWidth] = useState(50)
   const [isResizing, setIsResizing] = useState(false)
-  
+  const [swapPanels, setSwapPanels] = useState(false)
+   
   // Full Screen & Toolbar State
   const [isFullScreen, setIsFullScreen] = useState(false)
   const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(false)
@@ -87,12 +88,14 @@ export default function EditPage() {
     const savedModel = localStorage.getItem('gemini_model')
     const savedPanelWidth = localStorage.getItem('imagePanelWidth')
     const savedOrientation = localStorage.getItem('layoutOrientation')
+    const savedSwap = localStorage.getItem('swapPanels') // טעינת המצב השמור
     
     if (savedApiKey) setUserApiKey(savedApiKey)
     if (savedPrompt) setCustomPrompt(savedPrompt)
     if (savedModel) setSelectedModel(savedModel)
     if (savedPanelWidth) setImagePanelWidth(parseFloat(savedPanelWidth))
     if (savedOrientation) setLayoutOrientation(savedOrientation)
+    if (savedSwap) setSwapPanels(savedSwap === 'true')
   }, [])
 
   // Full Screen Handler
@@ -100,7 +103,7 @@ export default function EditPage() {
     try {
       if (!document.fullscreenElement) {
         await document.documentElement.requestFullscreen()
-        setIsToolbarCollapsed(true) // כיווץ אוטומטי בכניסה למסך מלא
+        setIsToolbarCollapsed(true) 
       } else {
         if (document.exitFullscreen) await document.exitFullscreen()
         setIsToolbarCollapsed(false)
@@ -110,7 +113,7 @@ export default function EditPage() {
     }
   }
 
-  // Listener for Full Screen changes (e.g. Esc key)
+  // Listener for Full Screen changes
   useEffect(() => {
     const handleFullScreenChange = () => {
       setIsFullScreen(!!document.fullscreenElement)
@@ -162,6 +165,30 @@ export default function EditPage() {
   }
 
   // --- Handlers ---
+  const togglePanelOrder = () => {
+    const newState = !swapPanels
+    setSwapPanels(newState)
+    localStorage.setItem('swapPanels', newState.toString())
+  }
+
+  const handleRemoveDigits = () => {
+    if (!window.confirm('האם אתה בטוח שברצונך למחוק את כל הספרות (0-9) מהטקסט?')) return;
+
+    const regex = /[0-9]/g; 
+
+    if (twoColumns) {
+      const newRight = rightColumn.replace(regex, '');
+      const newLeft = leftColumn.replace(regex, '');
+      
+      setRightColumn(newRight);
+      setLeftColumn(newLeft);
+      handleAutoSaveWrapper(content, newLeft, newRight, true);
+    } else {
+      const newContent = content.replace(regex, '');
+      setContent(newContent);
+      handleAutoSaveWrapper(newContent, leftColumn, rightColumn, false);
+    }
+  };
 
   const handleAutoSaveWrapper = (newContent, left = leftColumn, right = rightColumn, two = twoColumns) => {
     debouncedSave({
@@ -185,16 +212,23 @@ export default function EditPage() {
     setIsResizing(true)
   }
 
-  // Resize Effect
   useEffect(() => {
     if (!isResizing) return
     const handleMouseMove = (e) => {
       const container = document.querySelector('.split-container')
       if (!container) return
       const rect = container.getBoundingClientRect()
-      let newSize = layoutOrientation === 'horizontal' 
-        ? ((e.clientY - rect.top) / rect.height) * 100 
-        : ((rect.right - e.clientX) / rect.width) * 100
+      
+      let newSize 
+      if (layoutOrientation === 'horizontal') {
+        newSize = ((e.clientY - rect.top) / rect.height) * 100 
+      } else {
+        if (swapPanels) { // פאנל התמונה בצד ימין
+             newSize = ((rect.right - e.clientX) / rect.width) * 100
+        } else { // פאנל התמונה בצד שמאל
+             newSize = ((e.clientX - rect.left) / rect.width) * 100
+        }
+      }
       setImagePanelWidth(Math.min(Math.max(newSize, 20), 80))
     }
     const handleMouseUp = () => {
@@ -207,7 +241,7 @@ export default function EditPage() {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isResizing, layoutOrientation])
+  }, [isResizing, layoutOrientation, swapPanels])
 
   const toggleColumns = () => {
     if (!twoColumns) setShowSplitDialog(true)
@@ -231,7 +265,6 @@ export default function EditPage() {
   const handleFindReplace = (replaceAll = false) => {
     if (!findText) return alert('הזן טקסט לחיפוש');
     
-    // פונקציית עזר להמרת ^13 למעבר שורה אמיתי
     const processPattern = (str) => str.replaceAll('^13', '\n');
     
     const pattern = processPattern(findText);
@@ -239,12 +272,11 @@ export default function EditPage() {
     
     let totalOccurrences = 0;
 
-    // פונקציה פנימית לביצוע ההחלפה וספירת המופעים
     const executeReplace = (text) => {
       if (!text || !pattern) return text;
       
       const parts = text.split(pattern);
-      const count = parts.length - 1; // מספר הפעמים שהטקסט נמצא
+      const count = parts.length - 1; 
       
       if (count === 0) return text;
 
@@ -275,7 +307,6 @@ export default function EditPage() {
       }
     }
 
-    // הודעת פידבק למשתמש
     if (totalOccurrences > 0) {
       alert(`ההחלפה בוצעה בהצלחה! הוחלפו ${totalOccurrences} מופעים.`);
     } else {
@@ -345,7 +376,7 @@ export default function EditPage() {
         let text = ''
         if (ocrMethod === 'gemini') {
             text = await performGeminiOCR(croppedBlob, userApiKey, selectedModel, customPrompt)
-        } else if (ocrMethod === 'ocrwin') { // הוספת התנאי החדש
+        } else if (ocrMethod === 'ocrwin') { 
             text = await performOCRWin(croppedBlob)
         } else {
             text = await performTesseractOCR(croppedBlob)
@@ -381,7 +412,6 @@ export default function EditPage() {
   if (error) return <div className="text-center p-20 text-red-500">{error}</div>
 
   return (
-    // השינוי העיקרי כאן: כשהמסך מלא, אנחנו מוסיפים fixed inset-0 z-50 כדי לכסות את כל המסך ולהסתיר את הפוטר הגלובלי
     <div 
       className={`bg-background flex flex-col overflow-hidden transition-all duration-300 ${
         isFullScreen ? 'fixed inset-0 z-[100] h-screen w-screen' : 'h-[calc(100vh-0px)]' 
@@ -389,7 +419,6 @@ export default function EditPage() {
       style={{ cursor: isResizing ? 'col-resize' : 'default' }}
     >
       
-      {/* כותרת עליונה - מוסתרת במסך מלא */}
       {!isFullScreen && (
         <EditorHeader 
           bookName={bookData?.name} 
@@ -401,7 +430,6 @@ export default function EditPage() {
         />
       )}
       
-      {/* סרגל כלים */}
       <EditorToolbar 
         pageNumber={pageNumber} totalPages={bookData?.totalPages}
         imageZoom={imageZoom} setImageZoom={setImageZoom}
@@ -414,6 +442,11 @@ export default function EditPage() {
         selectedFont={selectedFont} setSelectedFont={setSelectedFont}
         twoColumns={twoColumns} toggleColumns={toggleColumns}
         layoutOrientation={layoutOrientation} setLayoutOrientation={setLayoutOrientation}
+        
+        swapPanels={swapPanels}
+        togglePanelOrder={togglePanelOrder}
+        handleRemoveDigits={handleRemoveDigits}
+
         setShowInfoDialog={setShowInfoDialog} setShowSettings={setShowSettings}
         thumbnailUrl={pageData?.thumbnail}
         isCollapsed={isToolbarCollapsed}
@@ -422,12 +455,18 @@ export default function EditPage() {
         onToggleFullScreen={toggleFullScreen}
       />
 
-      {/* אזור העריכה המרכזי */}
-      {/* הסרנו את ה-bg-black במסך מלא כדי לשמור על צבעים אחידים */}
       <div className={`flex-1 flex flex-col overflow-hidden ${isFullScreen ? 'p-0' : 'p-6'}`}>
         <div className={`flex-1 flex flex-col overflow-hidden ${isFullScreen ? '' : 'glass-strong rounded-xl border border-surface-variant'}`}>
           
-          <div className="flex-1 flex overflow-hidden split-container" style={{ flexDirection: layoutOrientation === 'horizontal' ? 'column' : 'row' }}>
+          {/* שינוי תצוגה לפי בחירת המשתמש */}
+          <div 
+            className="flex-1 flex overflow-hidden split-container" 
+            style={{ 
+                flexDirection: layoutOrientation === 'horizontal' 
+                  ? (swapPanels ? 'column-reverse' : 'column') 
+                  : (swapPanels ? 'row-reverse' : 'row') 
+            }}
+          >
             <ImagePanel 
               thumbnailUrl={pageData?.thumbnail} pageNumber={pageNumber}
               imageZoom={imageZoom} isSelectionMode={isSelectionMode}
@@ -448,7 +487,6 @@ export default function EditPage() {
             />
           </div>
           
-          {/* כותרת תחתונה של העורך - מוצגת תמיד, כולל במסך מלא */}
           <div className="px-4 py-3 border-t border-surface-variant bg-surface/50 text-sm flex justify-between items-center h-12 flex-shrink-0">
              <div className="flex gap-4">
                 {twoColumns ? <span>ימין: {rightColumn.length}, שמאל: {leftColumn.length}</span> : <span>תווים: {content.length}</span>}
@@ -462,7 +500,6 @@ export default function EditPage() {
         </div>
       </div>
 
-      {/* Modals */}
       <SettingsSidebar 
         show={showSettings} onClose={() => setShowSettings(false)}
         userApiKey={userApiKey} setUserApiKey={setUserApiKey}
