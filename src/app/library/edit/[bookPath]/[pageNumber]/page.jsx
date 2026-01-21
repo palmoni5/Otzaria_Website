@@ -223,10 +223,10 @@ export default function EditPage() {
       if (layoutOrientation === 'horizontal') {
         newSize = ((e.clientY - rect.top) / rect.height) * 100 
       } else {
-        if (swapPanels) {
-             newSize = ((e.clientX - rect.left) / rect.width) * 100
-        } else {
+        if (swapPanels) { // פאנל התמונה בצד ימין
              newSize = ((rect.right - e.clientX) / rect.width) * 100
+        } else { // פאנל התמונה בצד שמאל
+             newSize = ((e.clientX - rect.left) / rect.width) * 100
         }
       }
       setImagePanelWidth(Math.min(Math.max(newSize, 20), 80))
