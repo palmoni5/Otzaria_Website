@@ -84,7 +84,7 @@ export default function EditBookInfoDialog({ book, onClose, onSave }) {
 
   if (!book) return null
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
       <div 
         className="flex flex-col bg-white rounded-2xl w-full max-w-4xl shadow-2xl max-h-[90vh]" 
@@ -216,7 +216,6 @@ export default function EditBookInfoDialog({ book, onClose, onSave }) {
           >
             ביטול
           </button>
-          <button onClick={onClose} className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium">ביטול</button>
         </div>
       </div>
     </div>,
