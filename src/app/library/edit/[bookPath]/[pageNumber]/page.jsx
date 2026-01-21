@@ -322,7 +322,10 @@ const completePageLogic = async () => {
       
       let newSize 
       if (layoutOrientation === 'horizontal') {
-        newSize = ((e.clientY - rect.top) / rect.height) * 100 
+        // בפריסה אופקית (תמונה למעלה/למטה)
+        newSize = swapPanels 
+          ? ((rect.bottom - e.clientY) / rect.height) * 100 // תמונה למטה: מרחק מהתחתית
+          : ((e.clientY - rect.top) / rect.height) * 100    // תמונה למעלה: מרחק מהלמעלה
       } else {
         if (swapPanels) {
              newSize = ((e.clientX - rect.left) / rect.width) * 100
