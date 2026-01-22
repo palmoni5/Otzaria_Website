@@ -213,6 +213,17 @@ export default function EditPage() {
     saveSearchesToServer([...savedSearches, newSearch]);
   };
 
+  const addRemoveDigitsToSaved = () => {
+    const newSearch = {
+      id: Date.now().toString(),
+      label: 'ניקוי ספרות',
+      findText: '', 
+      replaceText: '',
+      isRemoveDigits: true
+    };
+    saveSearchesToServer([...savedSearches, newSearch]);
+  };
+
   const removeSavedSearch = (id) => {
     saveSearchesToServer(savedSearches.filter(s => s.id !== id));
   };
@@ -236,8 +247,28 @@ export default function EditPage() {
     let totalChanges = 0;
 
     savedSearches.forEach(search => {
+      if (search.isRemoveDigits) {
+         const digitRegex = /[0-9]/g;
+         if (twoColumns) {
+            if (digitRegex.test(tempRight) || digitRegex.test(tempLeft)) {
+                tempRight = tempRight.replace(digitRegex, '');
+                tempLeft = tempLeft.replace(digitRegex, '');
+                totalChanges++;
+            }
+         } else {
+            if (digitRegex.test(tempContent)) {
+                tempContent = tempContent.replace(digitRegex, '');
+                totalChanges++;
+            }
+         }
+         return; 
+      }
+
       const pattern = processPattern(search.findText);
       const replacement = processPattern(search.replaceText);
+      
+      if (!pattern) return;
+
       const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\n/g, '\\n');
       const regex = new RegExp(escapedPattern, 'g');
 
@@ -259,7 +290,7 @@ export default function EditPage() {
         setContent(tempContent);
         handleAutoSaveWrapper(tempContent, leftColumn, rightColumn, false);
       }
-      alert('כל ההחלפות השמורות בוצעו בהצלחה');
+      alert('כל הפעולות השמורות בוצעו בהצלחה');
     }
   };
 
@@ -678,6 +709,7 @@ export default function EditPage() {
         moveSearch={moveSearch}
         runAllSavedReplacements={runAllSavedReplacements}
         handleRemoveDigits={handleRemoveDigits}
+        onAddRemoveDigitsToSaved={addRemoveDigitsToSaved}
       />
 
       <SplitDialog 

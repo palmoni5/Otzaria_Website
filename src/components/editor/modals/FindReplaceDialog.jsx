@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { createPortal } from 'react-dom'
 
 export default function FindReplaceDialog({
@@ -14,29 +14,26 @@ export default function FindReplaceDialog({
   removeSavedSearch,
   moveSearch,
   runAllSavedReplacements,
-  handleRemoveDigits
+  handleRemoveDigits,
+  onAddRemoveDigitsToSaved // Prop חובה שצריך להעביר מקומפוננטת האב
 }) {
-  const [mounted, setMounted] = useState(false)
   const [view, setView] = useState('main') 
 
   const [newLabel, setNewLabel] = useState('')
   const [newFind, setNewFind] = useState('')
   const [newReplace, setNewReplace] = useState('')
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (isOpen) {
+  const handleCloseInternal = () => {
+    onClose();
+    setTimeout(() => {
         setView('main');
         setNewLabel('');
         setNewFind('');
         setNewReplace('');
-    }
-  }, [isOpen])
+    }, 100);
+  };
 
-  if (!isOpen || !mounted) return null
+  if (typeof document === 'undefined' || !isOpen) return null;
 
   const getTitle = () => {
       switch(view) {
@@ -55,7 +52,10 @@ export default function FindReplaceDialog({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+    <div 
+        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" 
+        onClick={handleCloseInternal}
+    >
       <div 
         className="flex flex-col bg-white glass-strong rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh]" 
         onClick={(e) => e.stopPropagation()}
@@ -65,13 +65,14 @@ export default function FindReplaceDialog({
             <span className="material-symbols-outlined text-primary">{getIcon()}</span>
             <span>{getTitle()}</span>
           </h2>
-          <button onClick={onClose} className="text-on-surface/50 hover:text-on-surface hover:bg-surface-variant p-2 rounded-full transition-colors">
+          <button onClick={handleCloseInternal} className="text-on-surface/50 hover:text-on-surface hover:bg-surface-variant p-2 rounded-full transition-colors">
             <span className="material-symbols-outlined text-2xl block">close</span>
           </button>
         </div>
 
         <div className="p-6 overflow-y-auto">
           
+          {/* --- מסך ראשי --- */}
           {view === 'main' && (
             <div className="space-y-5">
                 <div>
@@ -125,7 +126,7 @@ export default function FindReplaceDialog({
                     <button 
                         onClick={handleRemoveDigits} 
                         className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg border border-red-200 transition-colors text-sm font-medium"
-                        title="נקה את כל הספרות מהטקסט"
+                        title="נקה את כל הספרות מהטקסט באופן מיידי"
                     >
                         <span className="text-xs font-bold line-through">123</span>
                         <span>נקה ספרות מהטקסט</span>
@@ -142,6 +143,7 @@ export default function FindReplaceDialog({
             </div>
           )}
 
+          {/* --- מסך רשימה --- */}
           {view === 'list' && (
             <div className="space-y-4">
                  <button 
@@ -152,36 +154,67 @@ export default function FindReplaceDialog({
                     חפש והחלף הכל (לפי סדר)
                 </button>
                 
-                <button 
-                    onClick={() => {
-                        setNewLabel('');
-                        setNewFind('');
-                        setNewReplace('');
-                        setView('add');
-                    }}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                >
-                    <span className="material-symbols-outlined text-sm">add</span>
-                    הוסף חיפוש שמור חדש
-                </button>
+                {/* שורת הכפתורים: הוספה רגילה + הוספת ניקוי ספרות */}
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => {
+                            setNewLabel('');
+                            setNewFind('');
+                            setNewReplace('');
+                            setView('add');
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium"
+                        title="צור חיפוש והחלפה חדש"
+                    >
+                        <span className="material-symbols-outlined text-sm">add</span>
+                        חיפוש חדש
+                    </button>
+
+                    <button 
+                        onClick={() => {
+                            if (onAddRemoveDigitsToSaved) {
+                                onAddRemoveDigitsToSaved();
+                            } else {
+                                alert("חסרה הפונקציה בקובץ האב");
+                            }
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 border border-red-100 transition-colors text-xs sm:text-sm font-medium"
+                        title="הוסף את הפעולה 'ניקוי ספרות' לרשימה למטה"
+                    >
+                        <span className="text-xs font-bold line-through bg-red-100 border-red-200 border px-1 rounded">123</span>
+                        הוסף ניקוי ספרות
+                    </button>
+                </div>
 
                 <div className="max-h-[300px] overflow-y-auto space-y-2 pr-1 mt-2">
                     {savedSearches && savedSearches.length > 0 ? (
-                        savedSearches.map((search, index) => (
-                            <div key={search.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex items-center justify-between gap-3 group hover:border-primary/50 transition-colors">
+                        savedSearches.map((search, index) => {
+                            const isRemoveDigitsItem = search.isRemoveDigits;
+
+                            return (
+                            <div key={search.id} className={`p-3 rounded-lg border flex items-center justify-between gap-3 group transition-colors ${isRemoveDigitsItem ? 'bg-red-50 border-red-100 hover:border-red-300' : 'bg-gray-50 border-gray-200 hover:border-primary/50'}`}>
                                 <div className="flex-1 min-w-0">
-                                    <div className="font-bold text-sm text-gray-800 truncate">{search.label || search.findText}</div>
-                                    <div className="text-xs text-gray-500 truncate flex items-center gap-1 mt-1">
-                                        <span className="bg-white px-1 border rounded">{search.findText}</span>
-                                        <span className="material-symbols-outlined text-[10px]">arrow_back</span>
-                                        <span className="bg-white px-1 border rounded">{search.replaceText || '(ריק)'}</span>
-                                    </div>
+                                    {isRemoveDigitsItem ? (
+                                        <div className="flex items-center gap-2 text-red-700 font-medium">
+                                             <span className="text-xs font-bold line-through bg-red-100 border-red-200 border px-1 rounded">123</span>
+                                             <span className="truncate">{search.label || 'ניקוי ספרות'}</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="font-bold text-sm text-gray-800 truncate">{search.label || search.findText}</div>
+                                            <div className="text-xs text-gray-500 truncate flex items-center gap-1 mt-1">
+                                                <span className="bg-white px-1 border rounded">{search.findText}</span>
+                                                <span className="material-symbols-outlined text-[10px]">arrow_back</span>
+                                                <span className="bg-white px-1 border rounded">{search.replaceText || '(ריק)'}</span>
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-1 flex-shrink-0">
                                      <button 
-                                        onClick={() => handleFindReplace(true, search.findText, search.replaceText)}
-                                        className="p-1.5 text-blue-600 hover:bg-blue-50 rounded bg-blue-50/50 border border-blue-100"
-                                        title="הרץ חיפוש זה כעת"
+                                        onClick={() => isRemoveDigitsItem ? handleRemoveDigits() : handleFindReplace(true, search.findText, search.replaceText)}
+                                        className={`p-1.5 rounded border transition-colors ${isRemoveDigitsItem ? 'text-red-600 hover:bg-red-100 bg-red-50/50 border-red-200' : 'text-blue-600 hover:bg-blue-50 bg-blue-50/50 border-blue-100'}`}
+                                        title="הרץ פעולה זו כעת"
                                     >
                                         <span className="material-symbols-outlined text-lg">play_arrow</span>
                                     </button>
@@ -198,7 +231,7 @@ export default function FindReplaceDialog({
                                     </button>
                                 </div>
                             </div>
-                        ))
+                        )})
                     ) : (
                         <div className="text-center text-gray-500 py-4">אין חיפושים שמורים</div>
                     )}
@@ -214,6 +247,7 @@ export default function FindReplaceDialog({
             </div>
           )}
 
+          {/* --- מסך הוספה (ללא הכפתור המיוחד) --- */}
           {view === 'add' && (
             <div className="space-y-4">
                 <div>
@@ -273,7 +307,7 @@ export default function FindReplaceDialog({
                         }}
                         className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold"
                     >
-                        שמור
+                        שמור חיפוש רגיל
                     </button>
                 </div>
             </div>
