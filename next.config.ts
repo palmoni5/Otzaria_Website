@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  middlewareClientMaxBodySize: '500mb', // הגדלת מגבלת גוף הבקשה במידלוור
   experimental: {
     serverActions: {
       bodySizeLimit: '500mb', // הגדלת מגבלה להעלאת PDF
