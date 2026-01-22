@@ -199,16 +199,6 @@ export default function EditorToolbar({
 
       <div className="w-px h-5 bg-gray-200"></div>
 
-      <button 
-        onClick={handleRemoveDigits} 
-        className="flex items-center justify-center w-7 h-7 bg-white hover:bg-red-50 text-gray-600 hover:text-red-600 rounded-md border border-gray-200"
-        title="נקה את כל הספרות מהטקסט"
-      >
-        <span className="text-[10px] font-bold line-through decoration-red-500">123</span>
-      </button>
-
-      <div className="w-px h-5 bg-gray-200"></div>
-
       <button onClick={() => setShowFindReplace(true)} className="flex items-center gap-1 px-2 py-1 h-7 bg-white hover:bg-gray-50 rounded-md border border-gray-200">
         <span className="material-symbols-outlined text-sm">find_replace</span>
         <span className="text-[10px] font-medium">חיפוש</span>

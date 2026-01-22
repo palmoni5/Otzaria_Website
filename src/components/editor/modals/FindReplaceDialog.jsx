@@ -13,7 +13,8 @@ export default function FindReplaceDialog({
   addSavedSearch,
   removeSavedSearch,
   moveSearch,
-  runAllSavedReplacements
+  runAllSavedReplacements,
+  handleRemoveDigits
 }) {
   const [mounted, setMounted] = useState(false)
   const [view, setView] = useState('main') 
@@ -120,7 +121,16 @@ export default function FindReplaceDialog({
                     </button>
                 </div>
 
-                <div className="pt-4 border-t border-surface-variant">
+                <div className="pt-4 border-t border-surface-variant space-y-3">
+                    <button 
+                        onClick={handleRemoveDigits} 
+                        className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg border border-red-200 transition-colors text-sm font-medium"
+                        title="נקה את כל הספרות מהטקסט"
+                    >
+                        <span className="text-xs font-bold line-through">123</span>
+                        <span>נקה ספרות מהטקסט</span>
+                    </button>
+
                     <button 
                         onClick={() => setView('list')}
                         className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"

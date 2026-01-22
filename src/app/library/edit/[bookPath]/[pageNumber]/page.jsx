@@ -677,6 +677,7 @@ export default function EditPage() {
         removeSavedSearch={removeSavedSearch}
         moveSearch={moveSearch}
         runAllSavedReplacements={runAllSavedReplacements}
+        handleRemoveDigits={handleRemoveDigits}
       />
 
       <SplitDialog 
