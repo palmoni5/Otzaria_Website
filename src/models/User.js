@@ -1,4 +1,3 @@
-// app/src/models/User.js
 import mongoose from 'mongoose';
 
 const UserSchema = new mongoose.Schema({
@@ -7,6 +6,15 @@ const UserSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: { type: String, enum: ['user', 'admin'], default: 'user' },
   points: { type: Number, default: 0 },
+  // השדה החדש
+  savedSearches: [{
+    id: { type: String },
+    findText: { type: String },
+    replaceText: { type: String },
+    label: { type: String }
+  }]
 }, { timestamps: true });
 
-export default mongoose.models.User || mongoose.model('User', UserSchema);
+const User = mongoose.models.User || mongoose.model('User', UserSchema);
+
+export default User;
