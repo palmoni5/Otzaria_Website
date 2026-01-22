@@ -32,7 +32,36 @@ export async function uploadBookAction(formData) {
     }
 
     // 2. יצירת שם תיקייה ייחודי (Slug)
-    const slug = slugify(bookName, { lower: true, strict: true, remove: /[*+~.()'"!:@]/g }) + '-' + Date.now();
+        let baseSlug = slugify(bookName, {
+        replacement: '-',  
+        remove: /[*+~.()'"!:@\/\\?]/g, 
+        lower: false,      
+        strict: false      // מאפשר תווים בעברית (Unicode)
+    });
+
+    // ניקוי מקפים מיותרים בהתחלה או בסוף
+    baseSlug = baseSlug.replace(/^-+|-+$/g, '');
+    
+    if (!baseSlug) baseSlug = 'book'; // Fallback אם השם כולו היה תווים אסורים
+
+    let slug = baseSlug;
+    let counter = 1;
+
+    // לולאה למציאת שם פנוי (כמו בווינדוס: name, name-1, name-2)
+    while (true) {
+        // בדיקה כפולה: גם ב-DB וגם במערכת הקבצים
+        const existingBook = await Book.findOne({ slug: slug });
+        const folderExists = await fs.pathExists(path.join(UPLOAD_ROOT, 'books', slug));
+
+        if (!existingBook && !folderExists) {
+            break; // השם פנוי!
+        }
+
+        // אם תפוס, נסה את המספר הבא
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+    }
+    
     const bookFolder = path.join(UPLOAD_ROOT, 'books', slug);
     
     // יצירת התיקייה הפיזית
