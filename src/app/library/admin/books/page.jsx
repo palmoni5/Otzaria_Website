@@ -13,15 +13,12 @@ export default function AdminBooksPage() {
   const [editingBookInfo, setEditingBookInfo] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
 
-  // סטייטים לניהול שינוי שם
   const [renamingBook, setRenamingBook] = useState(null)
   const [newName, setNewName] = useState('')
 
-  // סטייטים לניהול מיזוג ספרים
   const [showMergeDialog, setShowMergeDialog] = useState(false)
   const [selectedBooksToMerge, setSelectedBooksToMerge] = useState([]) 
   const [mergedBookName, setMergedBookName] = useState('')
-  // --- סטייט חדש להסתרת הספר הממוזג ---
   const [isMergedHidden, setIsMergedHidden] = useState(false)
   const [isMerging, setIsMerging] = useState(false)
 
@@ -120,7 +117,33 @@ export default function AdminBooksPage() {
       setNewName(book.name);
   };
 
-  // --- פונקציות מיזוג ---
+  const handleDownloadFullText = async (book) => {
+    try {
+        const response = await fetch(`/api/admin/books/export-text?bookId=${book.id}`);
+        const result = await response.json();
+
+        if (result.success) {
+            const blob = new Blob([result.combinedText], { type: 'text/plain;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            
+            link.href = url;
+            link.download = `${book.name}_מלא.txt`;
+            document.body.appendChild(link);
+            link.click();
+            
+            // ניקוי
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } else {
+            alert('שגיאה בהפקת הקובץ: ' + (result.error || 'נסה שוב מאוחר יותר'));
+        }
+    } catch (e) {
+        console.error('Download error:', e);
+        alert('תקלה בתקשורת עם השרת');
+    }
+  };
+
   const addBookToMergeList = (book) => {
       if (!selectedBooksToMerge.find(b => b.id === book.id)) {
           setSelectedBooksToMerge(prev => [...prev, book]);
@@ -161,7 +184,7 @@ export default function AdminBooksPage() {
               body: JSON.stringify({ 
                   bookIds: orderedBookIds,
                   newName: mergedBookName,
-                  isHidden: isMergedHidden // שליחת הסטטוס לשרת
+                  isHidden: isMergedHidden
               })
           });
 
@@ -172,7 +195,7 @@ export default function AdminBooksPage() {
               setShowMergeDialog(false);
               setSelectedBooksToMerge([]);
               setMergedBookName('');
-              setIsMergedHidden(false); // איפוס
+              setIsMergedHidden(false);
               loadBooks(); 
           } else {
               alert(result.error || 'שגיאה במיזוג הספרים');
@@ -310,6 +333,18 @@ export default function AdminBooksPage() {
                         </div>
 
                         <div className="mt-auto space-y-2">
+                            {/* --- כפתור הורדה לספר שהושלם --- */}
+                            {progress === 100 && (
+                                <button
+                                    onClick={() => handleDownloadFullText(book)}
+                                    className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-green-600 text-white hover:bg-green-700 rounded-lg text-sm font-bold transition-all mb-1 shadow-sm"
+                                    title="הורד את כל דפי הספר כקובץ טקסט אחד"
+                                >
+                                    <span className="material-symbols-outlined text-sm">download</span>
+                                    הורד טקסט מאוחד
+                                </button>
+                            )}
+
                             <div className="grid grid-cols-2 gap-2">
                                 <Link
                                     href={`/library/book/${encodeURIComponent(book.path)}`}
