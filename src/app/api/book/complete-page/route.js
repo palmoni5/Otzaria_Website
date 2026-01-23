@@ -14,41 +14,46 @@ export async function POST(request) {
     const { pageId, bookId } = await request.json();
     await connectDB();
 
-    // 1. שליפת הדף כדי לבדוק את הסטטוס הנוכחי שלו
-    const page = await Page.findOne({ 
-        _id: pageId, 
-        claimedBy: session.user._id 
-    });
+    const isAdmin = session.user.role === 'admin';
 
-    if (!page) {
-        return NextResponse.json({ error: 'Page not found or unauthorized' }, { status: 404 });
+    const query = { _id: pageId };
+    if (!isAdmin) {
+        query.claimedBy = session.user._id;
     }
 
-    // בדיקה שהדף במצב שמאפשר סיום (בטיפול או כבר הושלם ורוצים לעדכן שוב)
+    const page = await Page.findOne(query);
+
+    if (!page) {
+        return NextResponse.json({ 
+            error: isAdmin ? 'Page not found' : 'Page not found or unauthorized' 
+        }, { status: 404 });
+    }
+
     if (page.status !== 'in-progress' && page.status !== 'completed') {
          return NextResponse.json({ error: 'Cannot complete page in current status' }, { status: 400 });
     }
 
     const wasAlreadyCompleted = page.status === 'completed';
 
-    // 2. עדכון הסטטוס והזמן
     page.status = 'completed';
     page.completedAt = new Date();
     
-    // שמירת השינויים ב-Page
+    if (!page.claimedBy) {
+        page.claimedBy = session.user._id;
+        page.claimedAt = new Date();
+    }
+    
     await page.save();
     
-    // ביצוע Populate ידני או שליפה מחדש כדי להחזיר את פרטי המשתמש ל-Client
     await page.populate('claimedBy', 'name email');
 
-    // 3. עדכון מונה הספר וניקוד המשתמש - רק אם הדף לא היה גמור קודם!
-    // זה מונע כפל נקודות במקרה של תיקון דף קיים
     if (!wasAlreadyCompleted) {
         await Book.findByIdAndUpdate(page.book, { $inc: { completedPages: 1 } });
-        await User.findByIdAndUpdate(session.user._id, { $inc: { points: 10 } });
+        
+        const userIdToReward = page.claimedBy._id || page.claimedBy; 
+        await User.findByIdAndUpdate(userIdToReward, { $inc: { points: 10 } });
     }
 
-    // החזרת העמוד המעודכן בפורמט שהלקוח מצפה לו
     return NextResponse.json({ 
         success: true, 
         message: 'הושלם בהצלחה!',
