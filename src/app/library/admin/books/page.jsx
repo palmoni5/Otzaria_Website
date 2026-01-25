@@ -80,19 +80,24 @@ export default function AdminBooksPage() {
     }
   };
 
-  const filteredBooks = books.filter(book => {
-    const matchesSearch = book.name.toLowerCase().includes(searchTerm.toLowerCase())
-    if (!matchesSearch) return false
+  const filteredBooks = books.filter(book => {  
+    const matchesSearch = book.name.toLowerCase().includes(searchTerm.toLowerCase());  
+    if (!matchesSearch) return false;  
 
-    const total = book.totalPages || 0
-    const completed = book.completedPages || 0
+    const total = book.totalPages || 0;  
+    const completed = book.completedPages || 0;  
 
-    if (activeTab === 'in_progress') return completed > 0 && completed < total
-    if (activeTab === 'hidden') return book.isHidden === true
-    if (activeTab === 'completed') return total > 0 && completed >= total
-    
-    return true
-  })
+    switch (activeTab) {  
+      case 'in_progress':  
+        return completed > 0 && completed < total;  
+      case 'hidden':  
+        return book.isHidden;  
+      case 'completed':  
+        return total > 0 && completed >= total;  
+      default:  
+        return true;  
+    }  
+  });  
 
   if (loading) return (
     <div className="flex justify-center items-center h-64">
