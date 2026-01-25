@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import Page from '@/models/Page';
 import User from '@/models/User';
-import Book from '@/models/Book'; // הוספת ייבוא הספר - קריטי ל-populate
+import Book from '@/models/Book'; 
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
@@ -14,15 +14,14 @@ export async function GET() {
     await connectDB();
     const userId = session.user.id || session.user._id;
 
-    // 1. שליפת המשתמש וניקוד עדכני (וגם כדי לקבל אובייקט ObjectId תקין)
+    // 1. שליפת המשתמש
     const user = await User.findById(userId).select('points');
     
     if (!user) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // 2. סטטיסטיקות עמודים (Aggregation)
-    // משתמשים ב-user._id (אובייקט) כדי להבטיח התאמה מדוייקת
+    // 2. סטטיסטיקות
     const stats = await Page.aggregate([
       { $match: { claimedBy: user._id } },
       {
@@ -39,19 +38,18 @@ export async function GET() {
 
     // 3. פעילות אחרונה
     const recentActivityRaw = await Page.find({ claimedBy: user._id })
-      .sort({ updatedAt: -1 })
+      .sort({ status: -1, updatedAt: -1 }) 
       .limit(10)
       .populate('book', 'name slug')
       .lean();
 
-    // מיפוי בטוח - בודק אם הספר קיים לפני שמנסה לגשת לשם שלו
+    // מיפוי הנתונים
     const recentActivity = recentActivityRaw.map(page => {
-      // אם הספר נמחק או שה-populate נכשל, נציג טקסט חלופי
       const bookName = page.book?.name || 'ספר לא ידוע';
       const bookPath = page.book?.slug || '#';
 
       return {
-        id: page._id.toString(), // הוספת ID ייחודי
+        id: page._id.toString(),
         bookName: bookName,
         bookPath: bookPath,
         pageNumber: page.pageNumber,

@@ -1,6 +1,7 @@
 export default function EditorToolbar({
   pageNumber,
   totalPages,
+  handleDownloadImage,
   imageZoom,
   setImageZoom,
   ocrMethod,
@@ -62,6 +63,14 @@ export default function EditorToolbar({
           100%
         </button>
       </div>
+
+      <button 
+        onClick={handleDownloadImage}
+        className="w-7 h-7 hover:bg-gray-100 text-gray-600 hover:text-blue-600 rounded-md flex items-center justify-center transition-colors"
+        title="הורד תמונה למחשב"
+      >
+        <span className="material-symbols-outlined text-sm">download</span>
+      </button>
 
       <div className="w-px h-5 bg-gray-200"></div>
 
@@ -187,16 +196,6 @@ export default function EditorToolbar({
           H3
         </button>
       </div>
-
-      <div className="w-px h-5 bg-gray-200"></div>
-
-      <button 
-        onClick={handleRemoveDigits} 
-        className="flex items-center justify-center w-7 h-7 bg-white hover:bg-red-50 text-gray-600 hover:text-red-600 rounded-md border border-gray-200"
-        title="נקה את כל הספרות מהטקסט"
-      >
-        <span className="text-[10px] font-bold line-through decoration-red-500">123</span>
-      </button>
 
       <div className="w-px h-5 bg-gray-200"></div>
 
