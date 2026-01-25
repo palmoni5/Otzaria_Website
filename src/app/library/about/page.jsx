@@ -210,7 +210,7 @@ export default function AboutPage() {
                 </h3>
                 <Link href="/library/books" className="inline-flex items-center gap-2 px-8 py-4 bg-primary text-on-primary rounded-lg text-lg font-medium hover:bg-accent transition-colors shadow-lg hover:shadow-xl">
                   <span className="material-symbols-outlined">library_books</span>
-                  <span>עיין בספרייה</span>
+                  <span>התחל לערוך</span>
                 </Link>
               </div>
             </motion.div>
