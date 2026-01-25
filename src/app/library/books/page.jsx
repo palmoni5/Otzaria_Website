@@ -205,6 +205,11 @@ function BookCard({ book }) {
         {/* Top Section */}
         <div className="flex gap-4 mb-5">
             <div className="w-16 h-20 bg-surface-variant rounded-lg shadow-sm overflow-hidden flex-shrink-0 relative group-hover:shadow-md transition-shadow">
+                {book.isHidden && (
+                  <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-bl-md z-10 font-bold shadow-sm">
+                      מוסתר
+                  </span>
+                )}
                 {book.thumbnail ? (
                     <img src={book.thumbnail} alt={book.name} className="w-full h-full object-cover" />
                 ) : (
