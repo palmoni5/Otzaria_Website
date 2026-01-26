@@ -44,6 +44,8 @@ export default function EditPage() {
   const [layoutOrientation, setLayoutOrientation] = useState('vertical')
   const [imagePanelWidth, setImagePanelWidth] = useState(50)
   const [isResizing, setIsResizing] = useState(false)
+  const [columnWidth, setColumnWidth] = useState(50)
+  const [isColumnResizing, setIsColumnResizing] = useState(false)
   
   const [swapPanels, setSwapPanels] = useState(false)
   const [isOCRBlocking, setIsOCRBlocking] = useState(false)
@@ -90,6 +92,7 @@ export default function EditPage() {
     const savedPrompt = localStorage.getItem('gemini_prompt')
     const savedModel = localStorage.getItem('gemini_model')
     const savedPanelWidth = localStorage.getItem('imagePanelWidth')
+    const savedColumnWidth = localStorage.getItem('columnWidth')
     const savedOrientation = localStorage.getItem('layoutOrientation')
     const savedSwap = localStorage.getItem('swapPanels')
     
@@ -97,6 +100,7 @@ export default function EditPage() {
     if (savedPrompt) setCustomPrompt(savedPrompt)
     if (savedModel) setSelectedModel(savedModel)
     if (savedPanelWidth) setImagePanelWidth(parseFloat(savedPanelWidth))
+    if (savedColumnWidth) setColumnWidth(parseFloat(savedColumnWidth))
     if (savedOrientation) setLayoutOrientation(savedOrientation)
     if (savedSwap) setSwapPanels(savedSwap === 'true')
 
@@ -404,27 +408,43 @@ export default function EditPage() {
     setIsResizing(true)
   }
 
+  const handleColumnResizeStart = (e) => {
+    e.preventDefault()
+    setIsColumnResizing(true)
+  }
+
   useEffect(() => {
-    if (!isResizing) return
+    if (!isResizing && !isColumnResizing) return
     const handleMouseMove = (e) => {
-      const container = document.querySelector('.split-container')
-      if (!container) return
-      const rect = container.getBoundingClientRect()
-      let newSize 
-      if (layoutOrientation === 'horizontal') {
-        newSize = swapPanels 
-          ? ((rect.bottom - e.clientY) / rect.height) * 100 
-          : ((e.clientY - rect.top) / rect.height) * 100    
-      } else {
-        newSize = swapPanels 
-            ? ((e.clientX - rect.left) / rect.width) * 100
-            : ((rect.right - e.clientX) / rect.width) * 100
+      if (isResizing) {
+        const container = document.querySelector('.split-container')
+        if (!container) return
+        const rect = container.getBoundingClientRect()
+        let newSize 
+        if (layoutOrientation === 'horizontal') {
+          newSize = swapPanels 
+            ? ((rect.bottom - e.clientY) / rect.height) * 100 
+            : ((e.clientY - rect.top) / rect.height) * 100    
+        } else {
+          newSize = swapPanels 
+              ? ((e.clientX - rect.left) / rect.width) * 100
+              : ((rect.right - e.clientX) / rect.width) * 100
+        }
+        setImagePanelWidth(Math.min(Math.max(newSize, 20), 80))
+      } else if (isColumnResizing) {
+        const editorContainer = document.querySelector('.text-editor-container')
+        if (!editorContainer) return
+        const rect = editorContainer.getBoundingClientRect()
+        const relativeX = rect.right - e.clientX
+        const newWidth = (relativeX / rect.width) * 100
+        setColumnWidth(Math.min(Math.max(newWidth, 10), 90))
       }
-      setImagePanelWidth(Math.min(Math.max(newSize, 20), 80))
     }
     const handleMouseUp = () => {
       setIsResizing(false)
+      setIsColumnResizing(false)
       localStorage.setItem('imagePanelWidth', imagePanelWidth.toString())
+      localStorage.setItem('columnWidth', columnWidth.toString())
     }
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', handleMouseUp)
@@ -432,7 +452,7 @@ export default function EditPage() {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
     }
-  }, [isResizing, layoutOrientation, swapPanels])
+  }, [isResizing, isColumnResizing, layoutOrientation, swapPanels, imagePanelWidth, columnWidth])
 
   const toggleColumns = () => {
     if (!twoColumns) setShowSplitDialog(true)
@@ -640,7 +660,7 @@ export default function EditPage() {
       className={`bg-background flex flex-col overflow-hidden transition-all duration-300 ${
         isFullScreen ? 'fixed inset-0 z-[100] h-screen w-screen' : 'h-[calc(100vh-0px)]' 
       }`}
-      style={{ cursor: isResizing ? 'col-resize' : 'default' }}
+      style={{ cursor: isResizing || isColumnResizing ? 'col-resize' : 'default' }}
     >
       {!isFullScreen && (
         <EditorHeader 
@@ -703,6 +723,7 @@ export default function EditPage() {
               handleAutoSave={(txt) => { setContent(txt); handleAutoSaveWrapper(txt); }}
               handleColumnChange={handleColumnChange}
               setActiveTextarea={setActiveTextarea} selectedFont={selectedFont}
+              columnWidth={columnWidth} onColumnResizeStart={handleColumnResizeStart}
             />
           </div>
           
@@ -823,4 +844,3 @@ function UploadDialog({ pageNumber, onConfirm, onCancel }) {
     </div>
   )
 }
-
