@@ -113,9 +113,20 @@ export default function EditPage() {
                     setSavedSearches(data.savedSearches);
                 }
             })
+        // 2. טעינת העדפות משתמש (ספרים מושתקים)
+        fetch('/api/user/preferences')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && Array.isArray(data.hiddenBooks)) {
+                    if (data.hiddenBooks.includes(bookPath)) {
+                        localStorage.setItem(`hide_instructions_${bookPath}`, 'true');
+                        setShowInfoDialog(false);
+                    }
+                }
+            })
             .catch(err => console.error('Failed to load saved searches from server:', err));
     }
-  }, [status])
+  }, [status, bookPath])
 
   useEffect(() => {
     if (bookPath && !loading) {
