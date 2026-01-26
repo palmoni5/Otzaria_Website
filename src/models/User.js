@@ -13,9 +13,11 @@ const UserSchema = new mongoose.Schema({
     replaceText: { type: String },
     label: { type: String },
     isRemoveDigits: { type: Boolean, default: false }
-  }]
+  }],
+  hiddenInstructionsBooks: { type: [String], default: [] }
 }, { timestamps: true });
 
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
+
 
 export default User;

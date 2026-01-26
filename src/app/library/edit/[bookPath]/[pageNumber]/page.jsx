@@ -113,6 +113,15 @@ export default function EditPage() {
     }
   }, [status])
 
+  useEffect(() => {
+    if (bookPath && !loading) {
+      const shouldHide = localStorage.getItem(`hide_instructions_${bookPath}`)
+      if (!shouldHide) {
+        setShowInfoDialog(true)
+      }
+    }
+  }, [bookPath, loading])
+
   const toggleFullScreen = async () => {
     try {
       if (!document.fullscreenElement) {
@@ -602,6 +611,27 @@ export default function EditPage() {
       }
   }
 
+  const handleCloseInfoDialog = async (doNotShowAgain) => {
+    setShowInfoDialog(false);
+    
+    if (doNotShowAgain && bookPath) {
+      localStorage.setItem(`hide_instructions_${bookPath}`, 'true');
+
+      try {
+        await fetch('/api/user/preferences', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            action: 'hide_instructions',
+            bookPath: bookPath 
+          })
+        });
+      } catch (err) {
+        console.error('Failed to save preference to server', err);
+      }
+    }
+  };
+
   if (loading) return <div className="text-center p-20">טוען...</div>
   if (error) return <div className="text-center p-20 text-red-500">{error}</div>
 
@@ -721,7 +751,7 @@ export default function EditPage() {
       />
 
       <InfoDialog 
-        isOpen={showInfoDialog} onClose={() => setShowInfoDialog(false)}
+        isOpen={showInfoDialog} onClose={handleCloseInfoDialog}
         editingInstructions={getInstructions()}
       />
 
@@ -746,7 +776,6 @@ export default function EditPage() {
         <UploadDialog
           pageNumber={pageNumber}
           onConfirm={handleUploadConfirm}
-          onSkip={completePageLogic}
           onCancel={() => setShowUploadDialog(false)}
         />
       )}
@@ -754,16 +783,16 @@ export default function EditPage() {
   )
 }
 
-function UploadDialog({ pageNumber, onConfirm, onSkip, onCancel }) {
+function UploadDialog({ pageNumber, onConfirm, onCancel }) {
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200] p-4" onClick={onCancel}>
-      <div className="glass-strong bg-white rounded-2xl p-8 max-w-md w-full border border-gray-200 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4" onClick={onCancel}>
+      <div className="glass-strong rounded-2xl p-8 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
         <div className="text-center mb-6">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="material-symbols-outlined text-4xl text-green-600">upload_file</span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">סיום עבודה על עמוד {pageNumber}</h2>
-          <p className="text-gray-600">האם ברצונך להעלות את הטקסט שערכת למערכת?</p>
+          <h2 className="text-2xl font-bold text-on-surface mb-2">סיום עבודה על עמוד {pageNumber}</h2>
+          <p className="text-on-surface/70">האם ברצונך להעלות את הטקסט שערכת למערכת?</p>
         </div>
         <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 mb-6">
           <div className="flex items-start gap-3">
@@ -783,15 +812,15 @@ function UploadDialog({ pageNumber, onConfirm, onSkip, onCancel }) {
             <span className="material-symbols-outlined">upload</span>
             <span>כן, העלה את הטקסט</span>
           </button>
-          <button onClick={onSkip} className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-bold">
-            <span className="material-symbols-outlined">check_circle</span>
-            <span>דלג על העלאה וסמן כהושלם</span>
+          <button
+            onClick={onCancel}
+            className="px-6 py-3 border-2 border-surface-variant text-on-surface rounded-lg hover:bg-surface transition-colors"
+          >
+            ביטול
           </button>
-          <button onClick={onCancel} className="px-6 py-3 border-2 border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors">ביטול</button>
         </div>
       </div>
     </div>
   )
-
 }
 
