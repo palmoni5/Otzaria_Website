@@ -109,6 +109,9 @@ export default function DashboardPage() {
           'success', 
           !isSubscribed ? 'נרשמת בהצלחה לקבלת התראות!' : 'הסרת את הרישום מההתראות.'
         )
+        setTimeout(() => {
+          setShowNotifModal(false);
+        }, 500);
       } else {
         showNoticeWithTimeout('error', 'שגיאה בביצוע הפעולה')
       }
