@@ -2,15 +2,12 @@ import { NextResponse } from 'next/server';
 import { hash } from 'bcryptjs';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
-import { checkRateLimit } from '@/lib/rate-limit'; // ייבוא הפונקציה
+import { checkRateLimit } from '@/lib/rate-limit';
 
 export async function POST(request) {
   try {
     // 1. אבטחה: Rate Limiting
-    // קבלת ה-IP האמיתי (תלוי בפריסה, בדרך כלל x-forwarded-for עובד ברוב המקרים)
     const ip = request.headers.get("x-forwarded-for") || "unknown";
-    
-    // הגבלה: 5 הרשמות בשעה מאותה כתובת IP
     const isAllowed = checkRateLimit(ip, 'register', 5, 'hour');
     
     if (!isAllowed) {
@@ -20,8 +17,15 @@ export async function POST(request) {
         );
     }
 
-    const { name, email, password } = await request.json();
+    const { name, email, password, acceptReminders } = await request.json();
     
+    if (!acceptReminders) {
+      return NextResponse.json(
+        { error: 'חובה לאשר את קבלת התזכורות כדי להירשם' }, 
+        { status: 400 }
+      );
+    }
+
     await connectDB();
 
     // בדיקה אם משתמש קיים
@@ -36,8 +40,9 @@ export async function POST(request) {
       name,
       email,
       password: hashedPassword,
-      role: 'user', // ברירת מחדל
-      points: 0
+      role: 'user',
+      points: 0,
+      acceptReminders: acceptReminders
     });
 
     return NextResponse.json({ message: 'המשתמש נוצר בהצלחה', user: { id: user._id, name: user.name, email: user.email } }, { status: 201 });
