@@ -8,7 +8,7 @@ export default function BookReminderPage() {
     
     // רשימות נתונים
     const [books, setBooks] = useState([]);
-    const [allUsers, setAllUsers] = useState([]); // רשימת המשתמשים להצלבה
+    const [allUsers, setAllUsers] = useState([]);
     
     // בחירות המשתמש
     const [selectedBookPath, setSelectedBookPath] = useState('');
@@ -25,11 +25,9 @@ export default function BookReminderPage() {
         success: ''
     });
 
-    // 1. טעינת רשימת הספרים + טעינת רשימת המשתמשים (בטעינה הראשונית)
     useEffect(() => {
         const loadInitialData = async () => {
             try {
-                // טעינת ספרים
                 const booksRes = await fetch('/api/library/list');
                 const booksData = await booksRes.json();
                 if (booksData.success) {
@@ -40,7 +38,6 @@ export default function BookReminderPage() {
                     setBooks(booksWithWork);
                 }
 
-                // טעינת משתמשים (כדי שיהיה לנו את האימיילים שלהם)
                 const usersRes = await fetch('/api/admin/users');
                 const usersData = await usersRes.json();
                 if (usersData.success && Array.isArray(usersData.users)) {
@@ -54,7 +51,6 @@ export default function BookReminderPage() {
         loadInitialData();
     }, []);
 
-    // 2. לוגיקת איתור נמענים (מתבצעת כשבוחרים ספר)
     useEffect(() => {
         if (!selectedBookPath) {
             setRecipients([]);
@@ -66,7 +62,6 @@ export default function BookReminderPage() {
             setRecipients([]);
 
             try {
-                // א. שליפת פרטי הספר המלאים (כדי לקבל את רשימת הדפים)
                 const response = await fetch(`/api/book/${encodeURIComponent(selectedBookPath)}`);
                 const data = await response.json();
 
@@ -74,15 +69,11 @@ export default function BookReminderPage() {
                     const emails = new Set();
                     
                     data.pages.forEach(page => {
-                        // בודקים רק דפים בסטטוס 'בטיפול'
                         if (page.status === 'in-progress') {
                             
-                            // מנסים למצוא את ה-ID של המשתמש
-                            // (claimedById הוא השם הנפוץ ב-page (6).jsx, או holder._id)
                             const userId = page.claimedById || (page.holder && page.holder._id);
 
                             if (userId) {
-                                // ב. הצלבה: מחפשים את המשתמש הזה ברשימת המשתמשים שטענו
                                 const userDetails = allUsers.find(u => u._id === userId || u.id === userId);
                                 if (userDetails && userDetails.email) {
                                     emails.add(userDetails.email);
@@ -100,7 +91,6 @@ export default function BookReminderPage() {
             }
         };
 
-        // מבצעים את הבדיקה רק אם יש לנו כבר את רשימת המשתמשים
         if (allUsers.length > 0) {
             fetchRecipients();
         }
