@@ -8,11 +8,13 @@ import Image from 'next/image'
 
 export default function RegisterPage() {
   const router = useRouter()
+  // הגדרת ה-State עם הפרמטר acceptReminders
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: '',
     confirmPassword: '',
+    acceptReminders: false, // זהו הפרמטר שיישלח לשרת
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -68,6 +70,7 @@ export default function RegisterPage() {
 
     try {
       // שלב 1: הרשמה
+      // formData כולל את acceptReminders ולכן הוא נשלח לשרת
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -77,7 +80,6 @@ export default function RegisterPage() {
       const data = await response.json()
 
       if (!response.ok) {
-        // הודעות שגיאה מפורטות מהשרת
         if (data.error) {
           setError(data.error)
         } else if (response.status === 400) {
@@ -99,10 +101,8 @@ export default function RegisterPage() {
       })
 
       if (result?.error) {
-        // אם ההתחברות נכשלה, נעביר לדף התחברות
         router.push('/library/auth/login?registered=true')
       } else {
-        // הצלחה - מעבר לאיזור האישי
         router.push('/library/dashboard')
       }
     } catch (err) {
@@ -229,6 +229,21 @@ export default function RegisterPage() {
                   placeholder="הזן סיסמה שוב"
                 />
               </div>
+            </div>
+
+            <div className="flex items-start gap-3 mt-2">
+              <div className="flex items-center h-5">
+                <input
+                  id="reminders"
+                  type="checkbox"
+                  checked={formData.acceptReminders}
+                  onChange={(e) => setFormData({ ...formData, acceptReminders: e.target.checked })}
+                  className="w-4 h-4 rounded border-surface-variant text-primary focus:ring-primary focus:ring-2 cursor-pointer bg-background"
+                />
+              </div>
+              <label htmlFor="reminders" className="text-sm text-on-surface/80 cursor-pointer select-none leading-5">
+                אני מאשר קבלת תזכורות במייל על עמודים שלא סיימתי
+              </label>
             </div>
 
             <button
