@@ -97,12 +97,17 @@ export default function BookReminderPage() {
                                     normalizeId(u._id) === userId || normalizeId(u.id) === userId
                                 );
 
-                                if (userDetails && userDetails.email) {
-                                    console.log(`Found match: User ${userDetails.name} (${userDetails.email}) for page ${page.number}`);
+                                if (userDetails && userDetails.email  && userDetails.acceptReminders ) {
+                                    console.log(`Found match: User ${userDetails.name} (${userDetails.email})`);
                                     foundEmails.add(userDetails.email);
                                 } else {
-                                    console.warn(`User ID ${userId} found on page ${page.number} but not found in users list (or no email).`);
+                                    if (!userDetails) {
+                                        console.warn(`User ID ${userId} found on page but NOT found in users list.`);
+                                    } else if (!userDetails.email) {
+                                        console.warn(`User ${userDetails.name} found but has NO email.`);
+                                    }
                                 }
+
                             }
                         }
                     });
