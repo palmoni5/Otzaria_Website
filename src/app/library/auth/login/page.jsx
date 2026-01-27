@@ -20,7 +20,7 @@ export default function LoginPage() {
   const handleUsernameKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault()
-      passwordRef.current?.focus()
+      e.preventDefault()
     }
   }
 
