@@ -106,7 +106,9 @@ export default function EditPage() {
     const savedColumnWidth = localStorage.getItem('columnWidth')
     const savedOrientation = localStorage.getItem('layoutOrientation')
     const savedSwap = localStorage.getItem('swapPanels')
+    const savedFont = localStorage.getItem('selectedFont')
     
+    if (savedFont) setSelectedFont(savedFont)
     if (savedApiKey) setUserApiKey(savedApiKey)
     if (savedPrompt) setCustomPrompt(savedPrompt)
     if (savedModel) setSelectedModel(savedModel)
@@ -148,6 +150,12 @@ export default function EditPage() {
             });
     }
   }, [status, bookPath])
+
+  useEffect(() => {
+    if (selectedFont) {
+      localStorage.setItem('selectedFont', selectedFont)
+    }
+  }, [selectedFont])
 
   const toggleFullScreen = async () => {
     try {
@@ -872,4 +880,5 @@ function UploadDialog({ pageNumber, onConfirm, onCancel }) {
     </div>
   )
 }
+
 
