@@ -12,7 +12,7 @@ export default function AdminBooksPage() {
   const [showAddBook, setShowAddBook] = useState(false)
   const [editingBookInfo, setEditingBookInfo] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState('all') // הוספתי את זה כי זה היה חסר
+  const [activeTab, setActiveTab] = useState('all')
 
   const [renamingBook, setRenamingBook] = useState(null)
   const [newName, setNewName] = useState('')
@@ -22,6 +22,10 @@ export default function AdminBooksPage() {
   const [mergedBookName, setMergedBookName] = useState('')
   const [isMergedHidden, setIsMergedHidden] = useState(false)
   const [isMerging, setIsMerging] = useState(false)
+
+  const [showNotifyDialog, setShowNotifyDialog] = useState(false)
+  const [bookToToggle, setBookToToggle] = useState(null)
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
 
   const loadBooks = async () => {
     try {
@@ -63,28 +67,48 @@ export default function AdminBooksPage() {
     }
   }
 
-  const toggleVisibility = async (bookId, currentHiddenStatus) => {
+  
+  const handleVisibilityClick = (book) => {
+    if (book.isHidden) {
+      setBookToToggle(book)
+      setShowNotifyDialog(true)
+    } else {
+      updateBookStatus(book.id, true, false) 
+    }
+  }
+
+  const updateBookStatus = async (bookId, newIsHiddenStatus, sendNotification) => {
+    setIsUpdatingStatus(true)
     try {
         const response = await fetch('/api/admin/books/update', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                bookId: bookId, 
-                isHidden: !currentHiddenStatus 
+                id: bookId,
+                bookId: bookId,
+                isHidden: newIsHiddenStatus,
+                sendNotification: sendNotification
             })
         });
         
         if (response.ok) {
             setBooks(prev => prev.map(b => 
-                b.id === bookId ? { ...b, isHidden: !currentHiddenStatus } : b
+                b.id === bookId ? { ...b, isHidden: newIsHiddenStatus } : b
             ));
         } else {
-            alert('שגיאה בעדכון הסטטוס');
+            const data = await response.json();
+            alert(data.error || 'שגיאה בעדכון הסטטוס');
         }
     } catch (e) {
+        console.error(e)
         alert('תקלה בתקשורת');
+    } finally {
+        setIsUpdatingStatus(false)
+        setShowNotifyDialog(false)
+        setBookToToggle(null)
     }
   };
+  
 
   const handleRenameSubmit = async () => {
     if (!newName.trim() || !renamingBook) return;
@@ -408,7 +432,7 @@ export default function AdminBooksPage() {
 
                             <div className="flex gap-2">
                                 <button
-                                    onClick={() => toggleVisibility(book.id, isHidden)}
+                                    onClick={() => handleVisibilityClick(book)}
                                     className={`flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                                         isHidden 
                                         ? 'bg-amber-100 text-amber-800 hover:bg-amber-200' 
@@ -489,6 +513,57 @@ export default function AdminBooksPage() {
                                 disabled={!newName.trim() || newName === renamingBook.name}
                             >
                                 שמור שינויים
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
+        {showNotifyDialog && bookToToggle && (
+             <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200 h-screen w-screen">
+                <div 
+                    className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden relative" 
+                    onClick={e => e.stopPropagation()}
+                >
+                    <div className="p-4 border-b bg-gray-50 flex justify-between items-center">
+                        <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                             <span className="material-symbols-outlined text-primary">campaign</span>
+                             חשיפת ספר לקהל
+                        </h3>
+                        <button onClick={() => setShowNotifyDialog(false)} className="text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-200 p-1">
+                            <span className="material-symbols-outlined text-xl">close</span>
+                        </button>
+                    </div>
+                    
+                    <div className="p-6 space-y-4">
+                        <p className="text-gray-700 text-base">
+                            הספר <strong>"{bookToToggle.name}"</strong> יהפוך כעת לגלוי לכל המשתמשים.
+                        </p>
+                        <p className="font-bold text-gray-900 text-base">
+                            האם ברצונך לשלוח עדכון במייל למנויים על ספר זה?
+                        </p>
+
+                        <div className="flex flex-col gap-3 mt-6">
+                            <button
+                                onClick={() => updateBookStatus(bookToToggle.id, false, true)}
+                                disabled={isUpdatingStatus}
+                                className="w-full bg-green-600 text-white py-3 rounded-xl hover:bg-green-700 flex items-center justify-center gap-2 font-bold shadow-md transition-all hover:scale-[1.02]"
+                            >
+                                {isUpdatingStatus ? 'מעדכן ושולח...' : (
+                                    <>
+                                        <span className="material-symbols-outlined">send</span>
+                                        כן, חשוף ושלח מייל
+                                    </>
+                                )}
+                            </button>
+                            
+                            <button
+                                onClick={() => updateBookStatus(bookToToggle.id, false, false)}
+                                disabled={isUpdatingStatus}
+                                className="w-full bg-gray-100 text-gray-700 py-3 rounded-xl hover:bg-gray-200 border border-gray-300 font-medium transition-all"
+                            >
+                                לא, רק חשוף (ללא מייל)
                             </button>
                         </div>
                     </div>
@@ -626,6 +701,4 @@ export default function AdminBooksPage() {
         )}
     </>
   )
-
 }
-

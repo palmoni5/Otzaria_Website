@@ -1,0 +1,6 @@
+{
+  "name": "Otzaria Project",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20-bullseye",
+  "forwardPorts": [3000, 27017],
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y mongodb && npm install"
+}

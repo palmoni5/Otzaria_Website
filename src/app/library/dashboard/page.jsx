@@ -109,6 +109,9 @@ export default function DashboardPage() {
           'success', 
           !isSubscribed ? 'נרשמת בהצלחה לקבלת התראות!' : 'הסרת את הרישום מההתראות.'
         )
+        setTimeout(() => {
+          setShowNotifModal(false);
+        }, 500);
       } else {
         showNoticeWithTimeout('error', 'שגיאה בביצוע הפעולה')
       }
@@ -581,7 +584,9 @@ export default function DashboardPage() {
               )}
             </div>
           </div>
-          {/* --- Notification Modal --- */}
+        </div>
+      )}
+      {/* --- Notification Modal --- */}
       {showNotifModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="flex flex-col bg-white glass-strong rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
