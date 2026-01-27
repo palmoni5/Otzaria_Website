@@ -37,17 +37,22 @@ export const authOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
+          acceptReminders: user.acceptReminders,
         };
       },
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       // user קיים רק בהתחברות הראשונית (Login)
       if (user) {
         // תיקון: משתמשים ב-user.id כי זה מה שהחזרנו ב-authorize
         token.id = user.id; 
         token.role = user.role;
+        token.acceptReminders = user.acceptReminders;
+      }
+      if (trigger === "update" && session?.acceptReminders) {
+        token.acceptReminders = session.acceptReminders;
       }
       return token;
     },
@@ -58,6 +63,7 @@ export const authOptions = {
         // ליתר ביטחון, נגדיר גם _id לתאימות לאחור
         session.user._id = token.id;
         session.user.role = token.role;
+        session.user.acceptReminders = token.acceptReminders;
       }
       return session;
     },

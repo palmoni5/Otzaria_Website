@@ -29,6 +29,9 @@ export default function DashboardPage() {
   const [sendingReply, setSendingReply] = useState(false)
   const [notice, setNotice] = useState(null)
   const noticeTimeoutRef = useRef(null)
+  const [showNotifModal, setShowNotifModal] = useState(false)
+  const [isSubscribed, setIsSubscribed] = useState(false)
+  const [loadingSub, setLoadingSub] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -73,6 +76,57 @@ export default function DashboardPage() {
       console.error('Error loading messages:', error)
     }
   }
+
+  const checkSubscriptionStatus = async () => {
+    try {
+      setLoadingSub(true)
+      const response = await fetch('/api/user/notifications')
+      const data = await response.json()
+      if (data.success) {
+        setIsSubscribed(data.isSubscribed)
+      }
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setLoadingSub(false)
+    }
+  }
+
+  const toggleSubscription = async () => {
+    try {
+      setLoadingSub(true)
+      const response = await fetch('/api/user/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: isSubscribed ? 'unsubscribe' : 'subscribe' })
+      })
+      
+      const result = await response.json()
+      
+      if (result.success) {
+        setIsSubscribed(!isSubscribed)
+        showNoticeWithTimeout(
+          'success', 
+          !isSubscribed ? 'נרשמת בהצלחה לקבלת התראות!' : 'הסרת את הרישום מההתראות.'
+        )
+        setTimeout(() => {
+          setShowNotifModal(false);
+        }, 500);
+      } else {
+        showNoticeWithTimeout('error', 'שגיאה בביצוע הפעולה')
+      }
+    } catch (error) {
+      showNoticeWithTimeout('error', 'שגיאה בתקשורת')
+    } finally {
+      setLoadingSub(false)
+    }
+  }
+
+  useEffect(() => {
+    if (showNotifModal) {
+      checkSubscriptionStatus()
+    }
+  }, [showNotifModal])
 
   const showNoticeWithTimeout = (type, text, duration = 5000) => {
     setNotice({ type, text })
@@ -306,6 +360,14 @@ export default function DashboardPage() {
                 )}
               </button>
 
+              <button 
+                onClick={() => setShowNotifModal(true)}
+                className="flex flex-col items-center gap-3 p-6 bg-primary-container rounded-xl hover:bg-primary/20 transition-all"
+              >
+                <span className="material-symbols-outlined text-4xl text-primary">campaign</span>
+                <span className="font-medium text-on-surface">התראות על ספרים חדשים</span>
+              </button>
+
               {isAdmin && (
                 <Link href="/library/admin" className="flex flex-col items-center gap-3 p-6 bg-accent/20 rounded-xl hover:bg-accent/30 transition-all">
                   <span className="material-symbols-outlined text-4xl text-accent">admin_panel_settings</span>
@@ -520,6 +582,67 @@ export default function DashboardPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* --- Notification Modal --- */}
+      {showNotifModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="flex flex-col bg-white glass-strong rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="p-6 border-b border-surface-variant bg-white/50 rounded-t-2xl flex justify-between items-center">
+              <h3 className="text-xl font-bold text-on-surface flex items-center gap-3">
+                <span className="material-symbols-outlined text-2xl text-primary">notifications_active</span>
+                התראות על ספרים חדשים
+              </h3>
+              <button onClick={() => setShowNotifModal(false)} className="text-gray-500 hover:text-gray-800">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            
+            {/* Content */}
+            <div className="p-8 text-center space-y-6">
+              <div className={`inline-flex items-center justify-center p-4 rounded-full ${isSubscribed ? 'bg-green-100' : 'bg-gray-100'}`}>
+                <span className={`material-symbols-outlined text-5xl ${isSubscribed ? 'text-green-600' : 'text-gray-400'}`}>
+                  {isSubscribed ? 'mark_email_read' : 'mail_off'}
+                </span>
+              </div>
+
+              <div>
+                <p className="text-lg font-bold text-on-surface mb-2">
+                  סטטוס נוכחי: 
+                  <span className={isSubscribed ? 'text-green-600 mr-2' : 'text-gray-500 mr-2'}>
+                    {isSubscribed ? 'רשום לקבלת עדכונים' : 'לא רשום'}
+                  </span>
+                </p>
+                <p className="text-sm text-on-surface/70">
+                  {isSubscribed 
+                    ? 'כתובת המייל שלך נמצאת ברשימת התפוצה. תקבל עדכון במייל כשספרים חדשים עולים לאתר.'
+                    : 'הצטרף לרשימת התפוצה כדי לקבל עדכונים על ספרים חדשים ישירות למייל.'}
+                </p>
+              </div>
+
+              <button
+                onClick={toggleSubscription}
+                disabled={loadingSub}
+                className={`w-full py-3 px-6 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
+                  isSubscribed 
+                    ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100' 
+                    : 'bg-primary text-on-primary hover:bg-blue-700 shadow-lg hover:shadow-xl'
+                }`}
+              >
+                {loadingSub ? (
+                  <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined">
+                      {isSubscribed ? 'unsubscribe' : 'add_alert'}
+                    </span>
+                    {isSubscribed ? 'בטל קבלת התראות' : 'אשר קבלת התראות'}
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
