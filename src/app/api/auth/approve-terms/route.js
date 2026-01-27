@@ -23,7 +23,7 @@ export async function POST(request) {
     const updatedUser = await User.findOneAndUpdate(
       { email: session.user.email },
       { 
-        $set: { acceptReminders: true } 
+        $set: { acceptReminders: true }
       },
       { new: true } 
     );
