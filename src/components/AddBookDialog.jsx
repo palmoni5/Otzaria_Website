@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { uploadBookAction } from '@/app/library/admin/upload-action'
 import { validateRequired, validateFile } from '@/lib/validation-utils'
 import Modal from './Modal'
 
@@ -12,6 +11,7 @@ export default function AddBookDialog({ isOpen, onClose, onBookAdded }) {
     const [error, setError] = useState(null)
     const [category, setCategory] = useState('כללי')
     const [isHidden, setIsHidden] = useState(false);
+    const [sendNotification, setSendNotification] = useState(false);
 
     const handleFileSelect = (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -24,7 +24,7 @@ export default function AddBookDialog({ isOpen, onClose, onBookAdded }) {
     }
 
     const handleSubmit = async () => {
-        // ולידציות (נשאר אותו דבר)
+        // ולידציות
         const bookNameCheck = validateRequired(bookName, 'שם הספר')
         if (!bookNameCheck.isValid) { setError(bookNameCheck.error); return }
         const fileCheck = validateFile(file)
@@ -38,9 +38,9 @@ export default function AddBookDialog({ isOpen, onClose, onBookAdded }) {
         formData.append('bookName', bookName)
         formData.append('category', category)
         formData.append('isHidden', isHidden);
+        formData.append('sendNotification', sendNotification);
 
         try {
-            // --- השינוי: פנייה ל-API החדש במקום ל-Action ---
             const response = await fetch('/api/admin/books/upload', {
                 method: 'POST',
                 body: formData
@@ -51,14 +51,9 @@ export default function AddBookDialog({ isOpen, onClose, onBookAdded }) {
             if (!response.ok || !result.success) {
                 throw new Error(result.error || 'שגיאה בהעלאה')
             }
-            // ------------------------------------------------
 
             if (onBookAdded) onBookAdded()
-            onClose()
-            setFile(null)
-            setBookName('')
-            setCategory('כללי')
-            setIsHidden(false);
+            handleClose()
         } catch (err) {
             console.error(err)
             setError('שגיאה בתהליך ההעלאה וההמרה: ' + err.message)
@@ -72,6 +67,9 @@ export default function AddBookDialog({ isOpen, onClose, onBookAdded }) {
             setError(null)
             setFile(null)
             setBookName('')
+            setCategory('כללי')
+            setIsHidden(false)
+            setSendNotification(false)
             onClose()
         }
     }
@@ -128,18 +126,37 @@ export default function AddBookDialog({ isOpen, onClose, onBookAdded }) {
                     />
                 </div>
 
-                <div className="flex items-center gap-2 py-2">
-                    <input
-                        type="checkbox"
-                        id="isHidden"
-                        checked={isHidden}
-                        onChange={(e) => setIsHidden(e.target.checked)}
-                        className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded"
-                    />
-                    <label htmlFor="isHidden" className="text-sm font-bold text-gray-700 flex items-center gap-1 cursor-pointer">
-                        <span className="material-symbols-outlined text-sm">visibility_off</span>
-                        ספר מוסתר (יוצג למנהלים בלבד)
-                    </label>
+                {/* אפשרויות נוספות */}
+                <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="isHidden"
+                            checked={isHidden}
+                            onChange={(e) => setIsHidden(e.target.checked)}
+                            disabled={isUploading}
+                            className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded cursor-pointer"
+                        />
+                        <label htmlFor="isHidden" className="text-sm font-bold text-gray-700 flex items-center gap-1 cursor-pointer select-none">
+                            <span className="material-symbols-outlined text-sm">visibility_off</span>
+                            ספר מוסתר (יוצג למנהלים בלבד)
+                        </label>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="sendNotification"
+                            checked={sendNotification}
+                            onChange={(e) => setSendNotification(e.target.checked)}
+                            disabled={isUploading || isHidden} 
+                            className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded cursor-pointer"
+                        />
+                        <label htmlFor="sendNotification" className={`text-sm font-bold flex items-center gap-1 cursor-pointer select-none ${isHidden ? 'text-gray-400' : 'text-gray-700'}`}>
+                            <span className="material-symbols-outlined text-sm">campaign</span>
+                            שלח עדכון במייל למנויים
+                        </label>
+                    </div>
                 </div>
 
                 {error && (

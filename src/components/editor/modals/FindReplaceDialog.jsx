@@ -15,7 +15,7 @@ export default function FindReplaceDialog({
   moveSearch,
   runAllSavedReplacements,
   handleRemoveDigits,
-  onAddRemoveDigitsToSaved // Prop חובה שצריך להעביר מקומפוננטת האב
+  onAddRemoveDigitsToSaved
 }) {
   const [view, setView] = useState('main') 
 
@@ -129,7 +129,7 @@ export default function FindReplaceDialog({
                         title="נקה את כל הספרות מהטקסט באופן מיידי"
                     >
                         <span className="text-xs font-bold line-through">123</span>
-                        <span>נקה ספרות מהטקסט</span>
+                        <span>נקה ספרות מהטקסט (מיידי)</span>
                     </button>
 
                     <button 
@@ -310,6 +310,28 @@ export default function FindReplaceDialog({
                         שמור חיפוש רגיל
                     </button>
                 </div>
+
+                 {/* --- כפתור חדש להוספת ניקוי ספרות --- */}
+                <div className="my-4 border-t border-gray-100 relative">
+                    <span className="absolute top-[-10px] left-1/2 -translate-x-1/2 bg-white px-2 text-xs text-gray-500">או</span>
+                </div>
+
+                <button 
+                    onClick={() => {
+                        if (onAddRemoveDigitsToSaved) {
+                            onAddRemoveDigitsToSaved();
+                            setView('list');
+                        } else {
+                            alert("פונקציה זו טרם הוטמעה בקומפוננטת האב");
+                        }
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-3 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 font-bold border border-red-100 transition-colors"
+                >
+                     <span className="text-xs font-bold line-through bg-red-100 border-red-200 border px-1 rounded">123</span>
+                     הוסף פעולת "ניקוי ספרות" לרשימה
+                </button>
+                {/* ------------------------------------ */}
+
             </div>
           )}
 

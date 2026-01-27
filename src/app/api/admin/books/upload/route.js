@@ -8,12 +8,15 @@ import Book from '@/models/Book';
 import Page from '@/models/Page';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { sendBookNotification } from '@/lib/emailService';
 
 const UPLOAD_ROOT = process.env.UPLOAD_DIR || path.join(process.cwd(), 'public', 'uploads');
 
 export async function POST(request) {
+  let createdBookId = null;
+  let createdFolderPath = null;
+
   try {
-    // 1. אבטחה: בדיקה ידנית של הסשן (כי עקפנו את ה-Middleware)
     const session = await getServerSession(authOptions);
     if (!session || session.user?.role !== 'admin') {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
@@ -27,12 +30,11 @@ export async function POST(request) {
     const bookName = formData.get('bookName');
     const category = formData.get('category') || 'כללי';
     const isHidden = formData.get('isHidden') === 'true';
+    const sendNotification = formData.get('sendNotification') === 'true';
 
     if (!file || !bookName) {
       return NextResponse.json({ success: false, error: 'חסרים נתונים' }, { status: 400 });
     }
-
-    // --- מכאן והלאה: אותו קוד בדיוק כמו ב-Server Action המקורי ---
 
     // יצירת שם תיקייה (Slug)
     let baseSlug = slugify(bookName, {
@@ -55,6 +57,7 @@ export async function POST(request) {
     }
     
     const bookFolder = path.join(UPLOAD_ROOT, 'books', slug);
+    createdFolderPath = bookFolder;
     await fs.ensureDir(bookFolder);
 
     const arrayBuffer = await file.arrayBuffer();
@@ -72,7 +75,6 @@ export async function POST(request) {
     };
 
     const convert = fromPath(tempPdfPath, options);
-    // שימוש ב-bulk כפי שביקשת (שים לב שזה צורך הרבה זיכרון בקבצים גדולים)
     const result = await convert.bulk(-1, { responseType: "image" });
     
     if (!result || result.length === 0) {
@@ -88,6 +90,8 @@ export async function POST(request) {
       completedPages: 0,
       isHidden: isHidden
     });
+    
+    createdBookId = newBook._id;
 
     const pagesData = result.map((page, index) => ({
       book: newBook._id,
@@ -99,9 +103,13 @@ export async function POST(request) {
     await Page.insertMany(pagesData);
     await fs.remove(tempPdfPath); 
 
+    if (sendNotification) {
+      await sendBookNotification(bookName, slug);
+    }
+
     return NextResponse.json({ 
       success: true, 
-      message: 'הספר הועלה ועובד בהצלחה',
+      message: 'הספר הועלה ועובד בהצלחה' + (sendNotification ? ' (נשלחו התראות)' : ''),
       bookId: newBook._id 
     });
 
@@ -109,7 +117,6 @@ export async function POST(request) {
     console.error('CRITICAL UPLOAD ERROR:', error);
 
     // --- ROLLBACK PROCEDURE ---
-    // נוהל חירום: מחיקת כל מה שנוצר
     try {
         console.log('Starting Rollback...');
 
@@ -131,7 +138,6 @@ export async function POST(request) {
         console.log('Rollback completed.');
 
     } catch (cleanupError) {
-        // אם גם הניקוי נכשל, זה מצב חמור אבל אין הרבה מה לעשות חוץ מלדווח
         console.error('Rollback failed! System may have orphan files.', cleanupError);
     }
 

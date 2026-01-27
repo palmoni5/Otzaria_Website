@@ -3,6 +3,7 @@ import connectDB from '@/lib/db';
 import Book from '@/models/Book';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { sendBookNotification } from '@/lib/emailService';
 
 export async function PUT(request) {
   try {
@@ -11,10 +12,10 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const { bookId, name, category, author, description, isHidden } = await request.json();
+    const { bookId, name, category, author, description, isHidden, sendNotification } = await request.json();
     await connectDB();
 
-    // בדיקה ששם הספר לא תפוס ע"י ספר אחר (אם השם השתנה)
+    // בדיקה ששם הספר לא תפוס ע"י ספר אחר
     if (name) {
         const existing = await Book.findOne({ name, _id: { $ne: bookId } });
         if (existing) {
@@ -30,9 +31,14 @@ export async function PUT(request) {
 
     if (!updatedBook) return NextResponse.json({ error: 'Book not found' }, { status: 404 });
 
+    if (sendNotification && isHidden === false) {
+        await sendBookNotification(updatedBook.name, updatedBook.slug);
+    }
+
     return NextResponse.json({ success: true, book: updatedBook });
 
   } catch (error) {
+    console.error('Update Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
