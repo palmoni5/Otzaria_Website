@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
-import "./globals.css"; // <--- שורה זו קריטית! וודא שהיא קיימת
+import "./globals.css"; 
 import SessionProvider from "@/components/SessionProvider";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import VersionNotice from "@/components/VersionNotice";
-import ReminderGuard from '@/components/ReminderGuard';
+import ReminderGuard from "@/components/ReminderGuard"; 
 
 const frankRuehl = localFont({
   src: "./fonts/FrankRuehlCLM-Medium.ttf",
@@ -40,7 +40,10 @@ export default function RootLayout({
       <body className={`antialiased bg-background text-foreground font-sans ${frankRuehl.variable}`}>
         <ErrorBoundary>
           <SessionProvider>
-            {children}
+            <ReminderGuard>
+              {children}
+            </ReminderGuard>
+            
             <VersionNotice />
           </SessionProvider>
         </ErrorBoundary>
