@@ -354,18 +354,18 @@ export default function EditPage() {
     }
   };
 
-  const handleAutoSaveWrapper = (newContent, left = leftColumn, right = rightColumn, two = twoColumns) => {
+  const handleAutoSaveWrapper = useCallback((newContent, left = leftColumn, right = rightColumn, two = twoColumns) => {
     debouncedSave({
       bookPath, pageNumber, content: newContent, leftColumn: left, rightColumn: right,
       twoColumns: two, isContentSplit, rightColumnName, leftColumnName
     })
-  }
+  }, [debouncedSave, bookPath, pageNumber, leftColumn, rightColumn, twoColumns, isContentSplit, rightColumnName, leftColumnName]);
 
-  const handleFinishClick = () => {
+  const handleFinishClick = useCallback(() => {
     if (!session) return alert('שגיאה: אינך מחובר');
     handleAutoSaveWrapper(content, leftColumn, rightColumn, twoColumns);
     setShowUploadDialog(true);
-  }
+  }, [session, content, leftColumn, rightColumn, twoColumns, handleAutoSaveWrapper]);
 
   const completePageLogic = async () => {
     try {
@@ -418,7 +418,7 @@ export default function EditPage() {
     }
   };
 
-  const handleColumnChange = (column, newText) => {
+  const handleColumnChange = useCallback((column, newText) => {
     if (column === 'left') {
       setLeftColumn(newText)
       handleAutoSaveWrapper(content, newText, rightColumn, twoColumns)
@@ -426,7 +426,7 @@ export default function EditPage() {
       setRightColumn(newText)
       handleAutoSaveWrapper(content, leftColumn, newText, twoColumns)
     }
-  }
+  }, [content, leftColumn, rightColumn, twoColumns, handleAutoSaveWrapper]);
 
   const handleResizeStart = (e) => {
     e.preventDefault()
@@ -566,7 +566,7 @@ export default function EditPage() {
     else alert('לא נמצאו תוצאות התואמות לחיפוש.');
   };
 
-  const insertTag = (tag) => {
+  const insertTag = useCallback((tag) => {
     let activeEl = document.activeElement;
     if (!activeEl || activeEl.tagName !== 'TEXTAREA') {
         if (activeTextarea === 'left') activeEl = document.querySelector('textarea[data-column="left"]');
@@ -604,46 +604,54 @@ export default function EditPage() {
         activeEl.setSelectionRange(newCursorPos, newCursorPos);
       }, 0);
     }
-  }
+  }, [activeTextarea, handleColumnChange, handleAutoSaveWrapper]);
+
+  const handlersRef = useRef({ insertTag, handleFinishClick });
+
+  useEffect(() => {
+    handlersRef.current = { insertTag, handleFinishClick };
+  }, [insertTag, handleFinishClick]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       const isModKey = e.ctrlKey || e.metaKey;
       if (!isModKey) return;
 
+      const { insertTag: currentInsertTag, handleFinishClick: currentHandleFinish } = handlersRef.current;
+
       switch (e.code) {
         case 'KeyB':
           e.preventDefault();
-          insertTag('b');
+          currentInsertTag('b');
           break;
         case 'KeyI':
           e.preventDefault();
-          insertTag('i');
+          currentInsertTag('i');
           break;
         case 'KeyU':
           e.preventDefault();
-          insertTag('u');
+          currentInsertTag('u');
           break;
         case 'Equal':
         case 'NumpadAdd':
           e.preventDefault();
-          insertTag('big');
+          currentInsertTag('big');
           break;
         case 'Minus':
         case 'NumpadSubtract':
           e.preventDefault();
-          insertTag('small');
+          currentInsertTag('small');
           break;
         case 'KeyS':
           e.preventDefault();
-          handleFinishClick();
+          currentHandleFinish();
           break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [insertTag, handleFinishClick]);
+  }, []);
 
   const handleOCR = async () => {
     if (!selectionRect) return alert('בחר אזור')

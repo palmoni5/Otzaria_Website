@@ -14,42 +14,31 @@ export async function GET() {
     await connectDB();
     const userId = session.user.id || session.user._id;
 
-    // 1. שליפת המשתמש
     const user = await User.findById(userId).select('points');
     
     if (!user) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // 2. סטטיסטיקות
     const stats = await Page.aggregate([
-      // שלב א': מביאים את הדפים של המשתמש
       { $match: { claimedBy: user._id } },
-      
-      // שלב ב': מביאים את פרטי הספר כדי לבדוק אם הוא מוסתר
       {
         $lookup: {
-          from: 'books',        // שם הקולקציה בדאטהבייס (ברירת המחדל של Mongoose ל-Book)
-          localField: 'book',   // השדה במודל Page
-          foreignField: '_id',  // השדה במודל Book
+          from: 'books',
+          localField: 'book',
+          foreignField: '_id',
           as: 'bookData'
         }
       },
-      { $unwind: '$bookData' }, // הופכים את המערך לאובייקט (ומסננים דפים ללא ספר תקין)
-
-      // שלב ג': הסינון המבוקש לסטטיסטיקות
-      // "שלא יתחשבנו אם הם לא הושלמו וגם מוסתרים"
-      // כלומר: משאירים את הדף אם: (הספר לא מוסתר) או (הדף הושלם)
+      { $unwind: '$bookData' },
       {
         $match: {
           $or: [
-            { 'bookData.isHidden': { $ne: true } }, // תנאי 1: הספר גלוי
-            { status: 'completed' }                 // תנאי 2: הדף הושלם (גם אם הספר מוסתר - הוא ייספר)
+            { 'bookData.isHidden': { $ne: true } }, 
+            { status: 'completed' } 
           ]
         }
       },
-
-      // שלב ד': הקיבוץ והספירה (כמו שהיה קודם)
       {
         $group: {
           _id: null,
@@ -62,31 +51,48 @@ export async function GET() {
 
     const userStats = stats[0] || { totalMyPages: 0, completed: 0, inProgress: 0 };
 
-    // 3. פעילות אחרונה (כולל הסינון הקודם: הסתרת ספרים מוסתרים לחלוטין מהפיד)
-    const recentActivityRaw = await Page.find({ claimedBy: user._id })
-      .sort({ status: -1, updatedAt: -1 }) 
-      .limit(30) // שליפת "באפר"
-      .populate({
-        path: 'book',
-        select: 'name slug isHidden',
-        match: { isHidden: { $ne: true } } // סינון ברמת ה-Populate לפעילות אחרונה
-      })
-      .lean();
+    const recentActivityRaw = await Page.aggregate([
+      { $match: { claimedBy: user._id } },
 
-    // מיפוי הנתונים וסינון (פעילות אחרונה)
-    const recentActivity = recentActivityRaw
-      .filter(page => page.book) // מסננים דפים שהספר שלהם מוסתר (חזר כ-null בגלל ה-match)
-      .slice(0, 10)
-      .map(page => {
-        return {
-          id: page._id.toString(),
-          bookName: page.book.name,
-          bookPath: page.book.slug || '#',
-          pageNumber: page.pageNumber,
-          status: page.status,
-          date: page.updatedAt ? new Date(page.updatedAt).toLocaleDateString('he-IL') : '-'
-        };
-      });
+      { $sort: { status: -1, updatedAt: -1 } },
+
+      {
+        $lookup: {
+          from: 'books',
+          localField: 'book',
+          foreignField: '_id',
+          as: 'bookData'
+        }
+      },
+      
+      { $unwind: '$bookData' },
+
+      { $match: { 'bookData.isHidden': { $ne: true } } },
+
+      { $limit: 10 },
+
+      {
+        $project: {
+          _id: 1,
+          pageNumber: 1,
+          status: 1,
+          updatedAt: 1,
+          'bookData.name': 1,
+          'bookData.slug': 1
+        }
+      }
+    ]);
+
+    const recentActivity = recentActivityRaw.map(page => {
+      return {
+        id: page._id.toString(),
+        bookName: page.bookData.name,
+        bookPath: page.bookData.slug || '#',
+        pageNumber: page.pageNumber,
+        status: page.status,
+        date: page.updatedAt ? new Date(page.updatedAt).toLocaleDateString('he-IL') : '-'
+      };
+    });
 
     return NextResponse.json({
       success: true,
