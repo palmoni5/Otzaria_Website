@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { signIn, getSession } from 'next-auth/react'
+import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -39,14 +39,8 @@ export default function LoginPage() {
       if (result?.error) {
         setError(result.error)
       } else {
-        const session = await getSession()
-
-        if (!session?.user?.acceptReminders) {
-          router.push('/library/auth/approve-terms')
-        } else {
-          router.refresh()
-          router.push('/library/dashboard')
-        }
+        router.refresh()
+        router.push('/library/dashboard')
       }
     } catch {
       setError('שגיאה בהתחברות')
