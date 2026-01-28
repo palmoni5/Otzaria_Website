@@ -30,7 +30,7 @@ export default function AdminMessagesPage() {
     try {
       setLoading(true)
       const [msgsRes, usersRes] = await Promise.all([
-        fetch('/api/messages'),
+        fetch('/api/messages?allMessages=true'),
         fetch('/api/admin/users')
       ])
 
