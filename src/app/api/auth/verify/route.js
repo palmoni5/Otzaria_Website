@@ -13,17 +13,22 @@ export async function GET(request) {
 
         await connectDB();
 
-        // חיפוש משתמש עם הטוקן הזה
-        const user = await User.findOne({ verificationToken: token, verificationTokenExpires: { $gt: Date.now() } });
+        const user = await User.findOne({ verificationToken: token });
 
         if (!user) {
-            // טוקן לא תקין או שכבר השתמשו בו
             return NextResponse.redirect(new URL('/library/auth/login?error=InvalidToken', request.url));
         }
 
-        // ביצוע האימות בשרת!
+        if (user.verificationTokenExpires && user.verificationTokenExpires < Date.now()) {
+            user.verificationToken = undefined;
+            user.verificationTokenExpires = undefined;
+            await user.save();
+            return NextResponse.redirect(new URL('/library/auth/login?error=TokenExpired', request.url));
+        }
+
         user.isVerified = true;
         user.verificationToken = undefined;
+        user.verificationTokenExpires = undefined;
         await user.save();
 
         // הפניה לדף הצלחה
