@@ -9,49 +9,48 @@ export async function POST(request) {
     const { email } = await request.json();
     await connectDB();
 
-    // NOTE: For rate limiting to work correctly across multiple requests and serverless environments,
-    // 'rateLimitStore', 'ONE_HOUR_MS', 'ONE_DAY_MS', and 'MAX_DAILY_REQUESTS' must be defined globally
-    // outside this function (e.g., at the top of this file). The following logic assumes these variables are accessible.
-
-    const now = Date.now();
-    const emailKey = email.toLowerCase();
-    let userRateData = rateLimitStore.get(emailKey);
-
-    // Initialize or reset daily count if the daily window has passed
-    if (!userRateData || (now - userRateData.dailyWindowStart > ONE_DAY_MS)) {
-      userRateData = {
-        lastRequest: 0,
-        dailyCount: 0,
-        dailyWindowStart: now,
-      };
-    }
-
-    // Check if an hour has passed since the last request
-    if (now - userRateData.lastRequest < ONE_HOUR_MS) {
-      return NextResponse.json({ success: false, message: 'ניתן לשלוח בקשה לאיפוס סיסמה פעם בשעה בלבד.' }, { status: 429 }); // 429 Too Many Requests
-    }
-
-    // Check if the daily request limit has been reached
-    if (userRateData.dailyCount >= MAX_DAILY_REQUESTS) {
-      return NextResponse.json({ success: false, message: 'חרגת ממספר הבקשות המקסימלי לאיפוס סיסמה ביום. נסה שוב מחר.' }, { status: 429 });
-    }
-
-    // Update rate limit data for this successful request
-    userRateData.lastRequest = now;
-    userRateData.dailyCount++;
-    rateLimitStore.set(emailKey, userRateData);
-
-    const user = await User.findOne({ email: emailKey });
+    const user = await User.findOne({ email: email.toLowerCase() });
+    
     if (!user) {
-      // Still return success: true to avoid email enumeration attacks, but don't send email
       return NextResponse.json({ success: true, message: 'אם המייל קיים, נשלחה הודעה.' });
     }
 
+    const NOW = Date.now();
+    const ONE_HOUR = 60 * 60 * 1000;
+    
+    if (user.lastResetRequest) {
+        const timeSinceLastRequest = NOW - new Date(user.lastResetRequest).getTime();
+        if (timeSinceLastRequest < ONE_HOUR) {
+            return NextResponse.json({ 
+                success: false, 
+                message: 'ניתן לבקש איפוס סיסמה רק פעם אחת בשעה. אנא בדוק את תיבת המייל שלך.' 
+            }, { status: 429 });
+        }
+    }
+
+    const lastRequestDate = user.lastResetRequest ? new Date(user.lastResetRequest) : new Date(0);
+    const isSameDay = lastRequestDate.toDateString() === new Date(NOW).toDateString();
+
+    if (!isSameDay) {
+        user.dailyResetRequestsCount = 0;
+    }
+
+    if (user.dailyResetRequestsCount >= 3) {
+        return NextResponse.json({ 
+            success: false, 
+            message: 'הגעת למגבלת הבקשות היומית. נסה שוב מחר.' 
+        }, { status: 429 });
+    }
+
+    user.lastResetRequest = NOW;
+    user.dailyResetRequestsCount += 1;
+
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpires = Date.now() + ONE_HOUR_MS; // Token valid for 1 hour
+    const resetTokenExpires = Date.now() + ONE_HOUR;
 
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpires = resetTokenExpires;
+    
     await user.save();
 
     const transporter = nodemailer.createTransport({
