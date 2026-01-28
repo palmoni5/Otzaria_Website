@@ -97,9 +97,17 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-on-surface mb-2">
-                סיסמה
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-on-surface">
+                  סיסמה
+                </label>
+                <Link 
+                  href="/library/auth/forgot-password" 
+                  className="text-xs text-primary hover:text-accent font-medium transition-colors"
+                >
+                  שכחת סיסמה?
+                </Link>
+              </div>
               <div className="relative">
                 <span className="material-symbols-outlined absolute right-3 top-3 text-on-surface/50">
                   lock
