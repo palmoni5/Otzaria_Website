@@ -44,6 +44,7 @@ export async function POST(request) {
         const token = crypto.randomBytes(32).toString('hex');
         
         user.verificationToken = token;
+        user.verificationTokenExpires = new Date(Date.now() + 60 * 60 * 1000);
         user.verificationRequestHistory = [...history, now];
         
         await user.save();
