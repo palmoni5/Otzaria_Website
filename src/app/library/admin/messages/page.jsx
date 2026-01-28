@@ -7,24 +7,20 @@ import { createPortal } from 'react-dom'
 export default function AdminMessagesPage() {
   const { data: session } = useSession()
   
-  // נתונים
   const [messages, setMessages] = useState([])
   const [users, setUsers] = useState([]) 
   const [loading, setLoading] = useState(true)
   const [mounted, setMounted] = useState(false)
   
-  // State לתגובה מהירה
   const [replyText, setReplyText] = useState('')
   const [selectedMessage, setSelectedMessage] = useState(null)
   
-  // State להודעה חדשה
   const [showSendMessageDialog, setShowSendMessageDialog] = useState(false)
   const [newMessageRecipient, setNewMessageRecipient] = useState('all')
   const [newMessageSubject, setNewMessageSubject] = useState('')
   const [newMessageText, setNewMessageText] = useState('')
   const [sendingNewMessage, setSendingNewMessage] = useState(false)
 
-  // טעינת נתונים ראשונית
   useEffect(() => {
     setMounted(true)
     loadData()
@@ -56,7 +52,6 @@ export default function AdminMessagesPage() {
     }
   }
 
-  // ... (פונקציות עזר קיימות נשארות זהות) ...
   const handleReply = async (messageId) => {
       if (!replyText.trim()) return
       try {
@@ -97,7 +92,6 @@ export default function AdminMessagesPage() {
       setMessages(prev => prev.filter(m => m.id !== messageId))
   }
 
-  // --- לוגיקה לשליחת הודעה חדשה ---
   const handleSendNewMessage = async () => {
     if (!newMessageSubject.trim() || !newMessageText.trim()) {
         alert('נא למלא את כל השדות')
@@ -136,106 +130,6 @@ export default function AdminMessagesPage() {
     }
   }
 
-  // --- פורטל למודל שליחת הודעה ---
-  const MessageModal = () => {
-    if (!showSendMessageDialog || !mounted) return null
-    
-    return createPortal(
-      <div 
-        className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
-        onClick={() => setShowSendMessageDialog(false)}
-      >
-          <div 
-            className="flex flex-col bg-white rounded-2xl w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh]"
-            onClick={e => e.stopPropagation()}
-          >
-              {/* Header */}
-              <div className="p-6 border-b border-gray-200 flex-shrink-0 bg-white rounded-t-2xl">
-                  <h3 className="text-2xl font-bold text-on-surface flex items-center gap-3">
-                      <span className="material-symbols-outlined text-3xl text-primary">send</span>
-                      שלח הודעה למשתמשים
-                  </h3>
-              </div>
-              
-              {/* Content */}
-              <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
-                  <div>
-                      <label className="block text-sm font-bold text-on-surface mb-2">נמען</label>
-                      <select 
-                          value={newMessageRecipient}
-                          onChange={(e) => setNewMessageRecipient(e.target.value)}
-                          className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface shadow-sm"
-                          disabled={sendingNewMessage}
-                      >
-                          <option value="all">כל המשתמשים (הודעת מערכת)</option>
-                          {users.map(user => (
-                              <option key={user._id} value={user.id}>{user.name} ({user.email})</option>
-                          ))}
-                      </select>
-                  </div>
-
-                  <div>
-                      <label className="block text-sm font-bold text-on-surface mb-2">נושא</label>
-                      <input 
-                          type="text"
-                          value={newMessageSubject}
-                          onChange={(e) => setNewMessageSubject(e.target.value)}
-                          placeholder="נושא ההודעה..."
-                          className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface shadow-sm"
-                          disabled={sendingNewMessage}
-                      />
-                  </div>
-                  
-                  <div>
-                      <label className="block text-sm font-bold text-on-surface mb-2">תוכן ההודעה</label>
-                      <textarea 
-                          value={newMessageText}
-                          onChange={(e) => setNewMessageText(e.target.value)}
-                          placeholder="כתוב את ההודעה שלך כאן..."
-                          className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface shadow-sm min-h-[150px] resize-none"
-                          disabled={sendingNewMessage}
-                      />
-                  </div>
-              </div>
-
-              {/* Footer */}
-              <div className="flex gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl flex-shrink-0">
-                  <button 
-                      onClick={handleSendNewMessage}
-                      disabled={sendingNewMessage}
-                      className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-primary text-on-primary rounded-lg hover:bg-accent transition-all shadow-md font-bold disabled:opacity-70 disabled:cursor-not-allowed hover:-translate-y-0.5"
-                  >
-                      {sendingNewMessage ? (
-                          <>
-                            <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                            <span>שולח...</span>
-                          </>
-                      ) : (
-                          <>
-                            <span className="material-symbols-outlined">send</span>
-                            <span>שלח הודעה</span>
-                          </>
-                      )}
-                  </button>
-                  <button 
-                      onClick={() => {
-                          setShowSendMessageDialog(false)
-                          setNewMessageSubject('')
-                          setNewMessageText('')
-                          setNewMessageRecipient('all')
-                      }}
-                      disabled={sendingNewMessage}
-                      className="px-6 py-3 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-                  >
-                      ביטול
-                  </button>
-              </div>
-          </div>
-      </div>,
-      document.body
-    )
-  }
-
   return (
     <div className="glass-strong p-6 rounded-xl min-h-[600px] relative">
       <div className="flex justify-between items-center mb-8 border-b border-gray-200 pb-4">
@@ -265,7 +159,6 @@ export default function AdminMessagesPage() {
           <div className="space-y-4">
               {messages.map(message => (
                   <div key={message.id} className={`glass p-6 rounded-lg transition-all ${message.status === 'unread' ? 'border-2 border-primary shadow-md' : 'hover:shadow-md'}`}>
-                      {/* ...תוכן ההודעה הקיים... */}
                       <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
@@ -352,25 +245,24 @@ export default function AdminMessagesPage() {
           </div>
       )}
 
-      {/* --- דיאלוג שליחת הודעה מתוקן --- */}
-      {showSendMessageDialog && (
+      {showSendMessageDialog && mounted && createPortal(
           <div 
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
             onClick={() => setShowSendMessageDialog(false)}
           >
               <div 
-                className="flex flex-col bg-white glass-strong rounded-2xl w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200"
+                className="flex flex-col bg-white rounded-2xl w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200 max-h-[90vh]"
                 onClick={e => e.stopPropagation()}
               >
-                  {/* Fixed Header */}
-                  <div className="p-6 border-b border-gray-200 flex-shrink-0 bg-white/50 rounded-t-2xl">
+                  {/* Header */}
+                  <div className="p-6 border-b border-gray-200 flex-shrink-0 bg-white rounded-t-2xl">
                       <h3 className="text-2xl font-bold text-on-surface flex items-center gap-3">
                           <span className="material-symbols-outlined text-3xl text-primary">send</span>
                           שלח הודעה למשתמשים
                       </h3>
                   </div>
                   
-                  {/* Scrollable Content */}
+                  {/* Content */}
                   <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar flex-1">
                       <div>
                           <label className="block text-sm font-bold text-on-surface mb-2">נמען</label>
@@ -382,7 +274,7 @@ export default function AdminMessagesPage() {
                           >
                               <option value="all">כל המשתמשים (הודעת מערכת)</option>
                               {users.map(user => (
-                                  <option key={user._id} value={user.id}>{user.name} ({user.email})</option>
+                                  <option key={user._id} value={user._id}>{user.name} ({user.email})</option>
                               ))}
                           </select>
                       </div>
@@ -411,8 +303,8 @@ export default function AdminMessagesPage() {
                       </div>
                   </div>
 
-                  {/* Fixed Footer */}
-                  <div className="flex gap-3 p-6 border-t border-gray-200 bg-gray-50/50 rounded-b-2xl flex-shrink-0">
+                  {/* Footer */}
+                  <div className="flex gap-3 p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl flex-shrink-0">
                       <button 
                           onClick={handleSendNewMessage}
                           disabled={sendingNewMessage}
@@ -444,7 +336,8 @@ export default function AdminMessagesPage() {
                       </button>
                   </div>
               </div>
-          </div>
+          </div>,
+          document.body
       )}
     </div>
   )
