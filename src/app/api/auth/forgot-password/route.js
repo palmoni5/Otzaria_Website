@@ -51,7 +51,7 @@ export async function POST(request) {
 
     await transporter.sendMail(message);
 
-    return NextResponse.json({ success: true, message: 'Email sent' });
+    return NextResponse.json({ success: true, message: 'אם המייל קיים, נשלחה הודעה.' });
   } catch (error) {
     console.error('Forgot Password Error:', error);
     return NextResponse.json({ error: 'שגיאה בשרת' }, { status: 500 });
