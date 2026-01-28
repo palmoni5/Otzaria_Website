@@ -16,7 +16,7 @@ export default function VerifyRequestPage() {
             if (res.ok) {
                 setStatus({ 
                     loading: false, 
-                    message: 'מייל לאימות נשלח בהצלחה! אנא בדוק את תיבת הדואר שלך (וגם את הספאם) ולחץ על הקישור.', 
+                    message: 'מייל לאימות נשלח בהצלחה! אנא בדוק את תיבת הדואר שלך (וגם את הספאם) ולחץ על הקישור.\nהקישור תקף לשעה אחת.', 
                     error: '' 
                 });
             } else {
