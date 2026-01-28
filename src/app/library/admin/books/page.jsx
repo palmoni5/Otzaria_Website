@@ -773,11 +773,14 @@ export default function AdminBooksPage() {
                             </div>
                         ) : (
                             <ul className="space-y-2">
-                                {subscribersList.map((email, index) => (
-                                    <li key={index} className="flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-lg hover:border-teal-200 hover:shadow-sm transition-all">
-                                        <span className="text-gray-400 text-xs w-6">{index + 1}.</span>
-                                        <span className="material-symbols-outlined text-gray-400 text-sm">mail</span>
-                                        <span className="text-gray-700 font-mono text-sm truncate select-all">{email}</span>
+                                {subscribersList.map((subscriber, index) => (
+                                    <li key={subscriber.email} className="flex items-center justify-between gap-3 p-3 bg-white border border-gray-100 rounded-lg hover:border-teal-200 hover:shadow-sm transition-all">
+                                        <div className="flex items-center gap-3 overflow-hidden">
+                                            <span className="text-gray-400 text-xs w-6">{index + 1}.</span>
+                                            <span className="material-symbols-outlined text-gray-400 text-sm">mail</span>
+                                            <span className="text-gray-700 font-mono text-sm truncate select-all" title={subscriber.email}>{subscriber.email}</span>
+                                        </div>
+                                        <span className="text-gray-600 text-sm truncate">{subscriber.name}</span>
                                     </li>
                                 ))}
                             </ul>
@@ -798,3 +801,4 @@ export default function AdminBooksPage() {
     </>
   )
 }
+
