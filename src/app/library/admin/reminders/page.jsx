@@ -9,6 +9,7 @@ export default function BookReminderPage() {
     // רשימות נתונים
     const [books, setBooks] = useState([]);
     const [allUsers, setAllUsers] = useState([]); 
+    const [history, setHistory] = useState([]);
     
     // בחירות המשתמש
     const [selectedBookPath, setSelectedBookPath] = useState('');
@@ -30,12 +31,51 @@ export default function BookReminderPage() {
         return String(id).toString();
     };
 
+    const formatTimeAgo = (dateString) => {
+        const date = new Date(dateString);
+        const now = new Date();
+        const seconds = Math.floor((now - date) / 1000);
+
+        if (seconds < 60) return 'ממש עכשיו';
+        
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return `לפני ${minutes} דקות`;
+        
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return `לפני ${hours === 1 ? 'שעה' : hours + ' שעות'}`;
+        
+        const days = Math.floor(hours / 24);
+        return `לפני ${days === 1 ? 'יום אחד' : days + ' ימים'}`;
+    };
+
+    // פונקציה חדשה למחיקת היסטוריה
+    const handleDeleteHistory = async (id) => {
+        if (!confirm('האם אתה בטוח שברצונך למחוק רשומה זו מההיסטוריה?')) return;
+
+        try {
+            // עדכון אופטימיסטי ב-UI
+            setHistory(prev => prev.filter(item => item.id !== id));
+
+            const res = await fetch(`/api/admin/history?id=${id}`, {
+                method: 'DELETE',
+            });
+            
+            const data = await res.json();
+            if (!data.success) {
+                // אם נכשל, החזר את הפריט (או רענן את העמוד)
+                console.error('Failed to delete history item');
+            }
+        } catch (error) {
+            console.error('Error deleting history:', error);
+        }
+    };
+
     useEffect(() => {
         const loadInitialData = async () => {
             try {
                 // טעינת ספרים
                 const booksRes = await fetch('/api/library/list');
-                const booksData = await booksRes.json();
+                const booksData = await booksRes.json(); // כאן הייתה הבעיה הפוטנציאלית, וודא ש-endpoint זה תקין
                 if (booksData.success) {
                     const booksWithWork = booksData.books.filter(book => 
                         !book.isHidden &&
@@ -51,8 +91,24 @@ export default function BookReminderPage() {
                 const usersRes = await fetch('/api/admin/users');
                 const usersData = await usersRes.json();
                 if (usersData.success && Array.isArray(usersData.users)) {
-                    console.log(`Loaded ${usersData.users.length} users for checking.`);
                     setAllUsers(usersData.users);
+                }
+
+                // טעינת היסטוריה
+                try {
+                    const historyRes = await fetch('/api/admin/history');
+                    // בדיקה שהתשובה תקינה לפני המרה ל-JSON
+                    if (historyRes.ok) {
+                        const historyText = await historyRes.text();
+                        if (historyText) {
+                            const historyData = JSON.parse(historyText);
+                            if (historyData.success) {
+                                setHistory(historyData.history);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error('History fetch failed:', e);
                 }
 
             } catch (error) {
@@ -73,13 +129,10 @@ export default function BookReminderPage() {
             setRecipients([]);
 
             try {
-                console.log('Checking recipients for book:', selectedBookPath);
-                
                 const response = await fetch(`/api/book/${encodeURIComponent(selectedBookPath)}`);
                 const data = await response.json();
 
                 if (data.success && data.pages) {
-                    
                     const userMap = new Map();
                     allUsers.forEach(u => {
                         if (u._id) userMap.set(normalizeId(u._id), u);
@@ -87,37 +140,24 @@ export default function BookReminderPage() {
                     });
 
                     const foundEmails = new Set();
-                    let pagesInProgressCount = 0;
                     
                     data.pages.forEach(page => {
                         if (page.status === 'in-progress') {
-                            pagesInProgressCount++;
-                            
                             let rawUserId = page.claimedById || page.holder;
-                            
                             if (rawUserId && typeof rawUserId === 'object' && rawUserId._id) {
                                 rawUserId = rawUserId._id;
                             }
-
                             const userId = normalizeId(rawUserId);
 
                             if (userId) {
                                 const userDetails = userMap.get(userId);
-
                                 if (userDetails && userDetails.email && userDetails.acceptReminders && userDetails.isVerified) {
-                                    console.log(`Found match: User ${userDetails.name} (${userDetails.email})`);
                                     foundEmails.add(userDetails.email);
-                                }else {
-                                    // לוגים לדיבוג
-                                    if (!userDetails) {
-                                        console.warn(`User ID ${userId} found on page but NOT in users list.`);
-                                    }
                                 }
                             }
                         }
                     });
 
-                    console.log(`Summary: ${pagesInProgressCount} pages in progress, ${foundEmails.size} unique emails found.`);
                     setRecipients(Array.from(foundEmails));
                 }
             } catch (error) {
@@ -132,7 +172,6 @@ export default function BookReminderPage() {
         }
     }, [selectedBookPath, allUsers]);
 
-    // 3. יצירת HTML (ללא שינוי)
     const generateEmailHtml = (bookName, messageBody) => {
         const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
         const formattedBody = messageBody.replace(/\n/g, '<br/>');
@@ -181,15 +220,35 @@ export default function BookReminderPage() {
                     bcc: recipients,
                     subject: emailSubject,
                     html: emailHtml,
-                    text: customMessage
+                    text: customMessage,
+                    bookName: selectedBook.name,
+                    bookPath: selectedBook.path
                 }),
             });
 
-            const result = await response.json();
+            // בדיקה מחמירה יותר לתשובה
+            const textResponse = await response.text();
+            let result;
+            try {
+                result = textResponse ? JSON.parse(textResponse) : {};
+            } catch (e) {
+                console.error('Failed to parse response:', textResponse);
+                throw new Error('התקבלה תשובה לא תקינה מהשרת');
+            }
 
             if (!response.ok || !result.success) {
                 throw new Error(result.error || 'שגיאה בשליחה');
             }
+
+            // עדכון היסטוריה מקומי
+            const newHistoryItem = {
+                id: Date.now().toString(), // זמני
+                adminName: session?.user?.name || 'אדמין',
+                bookName: selectedBook.name,
+                timestamp: new Date().toISOString()
+            };
+            
+            setHistory(prev => [newHistoryItem, ...prev]);
 
             setStatus({ 
                 loading: false, 
@@ -309,6 +368,44 @@ export default function BookReminderPage() {
                     </div>
                 )}
             </form>
+
+            {history.length > 0 && (
+                <div className="mt-12 border-t pt-8">
+                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                        <span className="material-symbols-outlined text-gray-500">history</span>
+                        היסטוריית שליחות אחרונות
+                    </h2>
+                    <div className="bg-gray-50 rounded-xl border border-gray-200 overflow-hidden">
+                        {history.map((item) => (
+                            <div key={item.id} className="p-4 border-b border-gray-100 last:border-0 hover:bg-white transition-colors flex items-center justify-between group">
+                                <div>
+                                    <div className="font-bold text-gray-800">{item.bookName}</div>
+                                    <div className="text-sm text-gray-500">נשלח על ידי: {item.adminName}</div>
+                                </div>
+                                <div className="flex items-center gap-4">
+                                    <div className="text-left">
+                                        <div className="text-sm font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-md inline-block">
+                                            {formatTimeAgo(item.timestamp)}
+                                        </div>
+                                        <div className="text-xs text-gray-400 mt-1" dir="ltr">
+                                            {new Date(item.timestamp).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}
+                                        </div>
+                                    </div>
+                                    
+                                    {/* כפתור מחיקה - מוצג רק בעת מעבר עכבר (group-hover) */}
+                                    <button 
+                                        onClick={() => handleDeleteHistory(item.id)}
+                                        className="text-gray-300 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50 opacity-0 group-hover:opacity-100"
+                                        title="מחק מההיסטוריה"
+                                    >
+                                        <span className="material-symbols-outlined">delete</span>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
