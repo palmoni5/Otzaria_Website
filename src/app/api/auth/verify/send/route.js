@@ -72,6 +72,7 @@ export async function POST(request) {
                     <p>שלום ${user.name || 'משתמש יקר'},</p>
                     <p>כדי להשלים את הרישום ולאמת את חשבונך, אנא לחץ על הקישור הבא:</p>
                     <a href="${verifyUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0;">אמת את המייל שלי</a>
+                    <p>הקישור תקף לשעה אחת.</p>
                     <p>אם לא ביקשת זאת, אנא התעלם מהודעה זו.</p>
                 </div>
             `
