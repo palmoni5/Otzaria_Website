@@ -14,7 +14,7 @@ export async function GET(request) {
         await connectDB();
 
         // חיפוש משתמש עם הטוקן הזה
-        const user = await User.findOne({ verificationToken: token });
+        const user = await User.findOne({ verificationToken: token, verificationTokenExpires: { $gt: Date.now() } });
 
         if (!user) {
             // טוקן לא תקין או שכבר השתמשו בו

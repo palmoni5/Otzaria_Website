@@ -244,7 +244,7 @@ export default function BookReminderPage() {
                             ) : (
                                 <span className="text-red-500 flex items-center gap-2 bg-red-50 px-3 py-1 rounded-full border border-red-200">
                                     <span className="material-symbols-outlined text-sm">warning</span>
-                                    לא נמצאו נמענים פעילים בספר זה (או שחסרים פרטי אימייל)
+                                    לא נמצאו נמענים פעילים בספר זה שאישרו תזכורות ואימתו את כתובתם
                                 </span>
                             )}
                         </div>

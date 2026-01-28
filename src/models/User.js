@@ -13,6 +13,8 @@ const UserSchema = new mongoose.Schema({
   dailyResetRequestsCount: { type: Number, default: 0 },
   isVerified: { type: Boolean, default: false },
   verificationToken: { type: String },
+  verificationTokenExpires: { type: Date },
+  verificationRequestHistory: [{ type: Date }],
   
   savedSearches: [{
     id: { type: String },

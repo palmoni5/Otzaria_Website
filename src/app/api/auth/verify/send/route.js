@@ -18,11 +18,34 @@ export async function POST(request) {
             return NextResponse.json({ error: 'המשתמש כבר מאומת' }, { status: 400 });
         }
 
-        // יצירת טוקן אימות
+        const now = new Date();
+        const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+        const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+        let history = user.verificationRequestHistory || [];
+        history = history.filter(date => new Date(date) > twentyFourHoursAgo);
+
+        if (history.length >= 3) {
+            return NextResponse.json({ 
+                error: 'הגעת למגבלת השליחות היומית (3). אנא נסה שוב מחר.' 
+            }, { status: 429 });
+        }
+
+        const lastRequestTime = history.length > 0 ? new Date(history[history.length - 1]) : null;
+        
+        if (lastRequestTime && lastRequestTime > oneHourAgo) {
+            const minutesLeft = Math.ceil((lastRequestTime.getTime() + 3600000 - now.getTime()) / 60000);
+            return NextResponse.json({ 
+                error: `ניתן לשלוח מייל אימות אחת לשעה. אנא נסה שוב בעוד ${minutesLeft} דקות.` 
+            }, { status: 429 });
+        }
+
+        // יצירת טוקן אימות חדש
         const token = crypto.randomBytes(32).toString('hex');
         
-        // שמירת הטוקן בשרת
         user.verificationToken = token;
+        user.verificationRequestHistory = [...history, now];
+        
         await user.save();
 
         // הגדרת שליחת המייל
