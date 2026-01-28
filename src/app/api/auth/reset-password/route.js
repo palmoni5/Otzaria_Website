@@ -7,8 +7,8 @@ export async function POST(request) {
   try {
     const { token, password } = await request.json();
 
-    if (!password || password.length < 8) {
-      return NextResponse.json({ error: 'הסיסמה חייבת להכיל לפחות 8 תווים.' }, { status: 400 });
+    if (!password || password.length < 6) {
+      return NextResponse.json({ error: 'הסיסמה חייבת להכיל לפחות 6 תווים.' }, { status: 400 });
     }
 
     await connectDB();
