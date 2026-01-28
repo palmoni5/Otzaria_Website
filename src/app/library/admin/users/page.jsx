@@ -9,8 +9,9 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [editingUser, setEditingUser] = useState(null)
   
-  // הוספת State לטופס העריכה
   const [formData, setFormData] = useState({})
+
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' })
 
   const loadUsers = async () => {
     try {
@@ -42,7 +43,6 @@ export default function AdminUsersPage() {
 
   const handleUpdateUser = async () => {
     try {
-      // התיקון: פנייה ל- /api/admin/users במקום /api/admin/users/update
       const response = await fetch('/api/admin/users', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -51,7 +51,7 @@ export default function AdminUsersPage() {
       
       if (response.ok) {
         setEditingUser(null)
-        loadUsers() // רענון כדי לקבל נתונים מעודכנים
+        loadUsers()
         alert('המשתמש עודכן בהצלחה')
       } else {
         const data = await response.json()
@@ -76,6 +76,40 @@ export default function AdminUsersPage() {
     }
   }
 
+  const handleSort = (key) => {
+    let direction = 'asc'
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
+  }
+
+  const sortedUsers = [...users].sort((a, b) => {
+    if (!sortConfig.key) return 0
+    
+    // שליפת הערכים, עם ברירת מחדל למניעת שגיאות
+    let aValue = a[sortConfig.key] || ''
+    let bValue = b[sortConfig.key] || ''
+    
+    if (sortConfig.key === 'points' || sortConfig.key === 'completedPages') {
+        aValue = Number(aValue) || 0
+        bValue = Number(bValue) || 0
+    }
+
+    if (aValue < bValue) {
+      return sortConfig.direction === 'asc' ? -1 : 1
+    }
+    if (aValue > bValue) {
+      return sortConfig.direction === 'asc' ? 1 : -1
+    }
+    return 0
+  })
+
+  const getSortIcon = (columnName) => {
+    if (sortConfig.key !== columnName) return '↕'
+    return sortConfig.direction === 'asc' ? '↑' : '↓'
+  }
+
   if (loading) return <div className="text-center p-10">טוען משתמשים...</div>
 
   return (
@@ -85,16 +119,42 @@ export default function AdminUsersPage() {
         <table className="w-full bg-white">
           <thead className="bg-gray-50 border-b">
             <tr>
-              <th className="text-right p-4 font-bold text-gray-700">שם</th>
-              <th className="text-right p-4 font-bold text-gray-700">אימייל</th>
-              <th className="text-right p-4 font-bold text-gray-700">תפקיד</th>
-              <th className="text-right p-4 font-bold text-gray-700">נקודות</th>
-              <th className="text-right p-4 font-bold text-gray-700">עמודים שהושלמו</th> 
+              <th 
+                onClick={() => handleSort('name')}
+                className="text-right p-4 font-bold text-gray-700 cursor-pointer hover:bg-gray-200 select-none"
+              >
+                שם {getSortIcon('name')}
+              </th>
+              <th 
+                onClick={() => handleSort('email')}
+                className="text-right p-4 font-bold text-gray-700 cursor-pointer hover:bg-gray-200 select-none"
+              >
+                אימייל {getSortIcon('email')}
+              </th>
+              <th 
+                onClick={() => handleSort('role')}
+                className="text-right p-4 font-bold text-gray-700 cursor-pointer hover:bg-gray-200 select-none"
+              >
+                תפקיד {getSortIcon('role')}
+              </th>
+              <th 
+                onClick={() => handleSort('points')}
+                className="text-right p-4 font-bold text-gray-700 cursor-pointer hover:bg-gray-200 select-none"
+              >
+                נקודות {getSortIcon('points')}
+              </th>
+              <th 
+                onClick={() => handleSort('completedPages')}
+                className="text-right p-4 font-bold text-gray-700 cursor-pointer hover:bg-gray-200 select-none"
+              >
+                עמודים שהושלמו {getSortIcon('completedPages')}
+              </th> 
               <th className="text-right p-4 font-bold text-gray-700">פעולות</th>
             </tr>
           </thead>
           <tbody>
-            {users.map(user => {
+            {/* --- שינוי 5: שימוש ב-sortedUsers במקום ב-users --- */}
+            {sortedUsers.map(user => {
               const isEditing = editingUser === user._id
               return (
                 <tr key={user._id} className="border-b hover:bg-gray-50 transition-colors">
@@ -135,7 +195,6 @@ export default function AdminUsersPage() {
                     ) : <span className="font-bold text-primary">{user.points || 0}</span>}
                   </td>
                   <td className="p-4 text-center">
-                    {/* עמודה חדשה - מספר עמודים */}
                     <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm font-bold">
                         {user.completedPages || 0}
                     </span>
