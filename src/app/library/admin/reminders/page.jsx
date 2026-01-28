@@ -101,10 +101,10 @@ export default function BookReminderPage() {
                             if (userId) {
                                 const userDetails = userMap.get(userId);
 
-                                if (userDetails && userDetails.email) {
+                                if (userDetails && userDetails.email && userDetails.acceptReminders) {
                                     console.log(`Found match: User ${userDetails.name} (${userDetails.email})`);
                                     foundEmails.add(userDetails.email);
-                                } else {
+                                }else {
                                     // לוגים לדיבוג
                                     if (!userDetails) {
                                         console.warn(`User ID ${userId} found on page but NOT in users list.`);
