@@ -39,8 +39,10 @@ export default function BookReminderPage() {
                 if (booksData.success) {
                     const booksWithWork = booksData.books.filter(book => 
                         !book.isHidden &&
-                        (book.inProgressPages && book.inProgressPages > 0) || 
-                        (book.completedPages < book.totalPages)
+                        (
+                            (book.inProgressPages && book.inProgressPages > 0) || 
+                            (book.completedPages < book.totalPages)
+                        )
                     );
                     setBooks(booksWithWork);
                 }
