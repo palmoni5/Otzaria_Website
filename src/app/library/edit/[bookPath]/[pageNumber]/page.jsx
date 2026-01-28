@@ -575,37 +575,77 @@ export default function EditPage() {
   const insertTag = (tag) => {
     let activeEl = document.activeElement;
     if (!activeEl || activeEl.tagName !== 'TEXTAREA') {
-        if (activeTextarea === 'left') activeEl = document.querySelector('textarea[data-column="left"]');
-        else if (activeTextarea === 'right') activeEl = document.querySelector('textarea[data-column="right"]');
-        else activeEl = document.querySelector('.editor-container textarea');
+      if (activeTextarea === 'left') activeEl = document.querySelector('textarea[data-column="left"]');
+      else if (activeTextarea === 'right') activeEl = document.querySelector('textarea[data-column="right"]');
+      else activeEl = document.querySelector('.editor-container textarea');
     }
+  
     if (!activeEl || activeEl.tagName !== 'TEXTAREA') return;
-    
+
     const start = activeEl.selectionStart;
     const end = activeEl.selectionEnd;
-    const text = activeEl.value;
-    const before = text.substring(0, start);
-    const selected = text.substring(start, end);
-    const after = text.substring(end);
-    
-    let insertion = `<${tag}>${selected}</${tag}>`
-    if (['h1', 'h2', 'h3'].includes(tag)) insertion = `\n<${tag}>${selected}</${tag}>\n`
-    
-    const newText = before + insertion + after;
-    const col = activeEl.getAttribute('data-column');
-    if (col === 'right') handleColumnChange('right', newText);
-    else if (col === 'left') handleColumnChange('left', newText);
-    else {
+    const selected = activeEl.value.substring(start, end);
+  
+    let insertion = `<${tag}>${selected}</${tag}>`;
+    if (['h1', 'h2', 'h3'].includes(tag)) insertion = `\n<${tag}>${selected}</${tag}>\n`;
+
+    activeEl.focus();
+    const success = document.execCommand('insertText', false, insertion);
+  
+    if (!success) {
+      const text = activeEl.value;
+      const before = text.substring(0, start);
+      const after = text.substring(end);
+      const newText = before + insertion + after;
+      
+      const col = activeEl.getAttribute('data-column');
+      if (col === 'right') handleColumnChange('right', newText);
+      else if (col === 'left') handleColumnChange('left', newText);
+      else {
         setContent(newText);
         handleAutoSaveWrapper(newText);
+      }
     }
-    
-    setTimeout(() => {
-        activeEl.focus();
-        const newCursorPos = start + insertion.length;
-        activeEl.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
-  }
+  };
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isModKey = e.ctrlKey || e.metaKey;
+      if (!isModKey) return;
+  
+      switch (e.code) {
+        case 'KeyB':
+          e.preventDefault();
+          insertTag('b');
+          break;
+        case 'KeyI':
+          e.preventDefault();
+          insertTag('i');
+          break;
+        case 'KeyU':
+          e.preventDefault();
+          insertTag('u');
+          break;
+        case 'Equal':
+        case 'NumpadAdd':
+          e.preventDefault();
+          insertTag('big');
+          break;
+        case 'Minus':
+        case 'NumpadSubtract':
+          e.preventDefault();
+          insertTag('small');
+          break;
+        case 'KeyS':
+          e.preventDefault();
+          handleFinishClick();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [insertTag, handleFinishClick]);
 
   const handleOCR = async () => {
     if (!selectionRect) return alert('בחר אזור')
