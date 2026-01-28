@@ -82,7 +82,7 @@ export async function POST(request) {
         `
     });
 
-    return NextResponse.json({ success: true, message: 'המייל נשלח בהצלחה' });
+    return NextResponse.json({ success: true, message: 'אם המייל קיים במערכת, נשלחה הודעה.' });
 
   } catch (error) {
     console.error('Forgot Password Error:', error);
