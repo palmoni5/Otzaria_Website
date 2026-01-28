@@ -15,7 +15,7 @@ export async function POST(request) {
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpires = Date.now() + 3600000;
+    const resetTokenExpires = Date.now() + (60 * 60 * 1000);
 
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpires = resetTokenExpires;
