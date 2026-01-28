@@ -1,17 +1,9 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
-import mongoose from 'mongoose';
+import MailingList from '@/models/MailingList';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-
-// הגדרת המודל שוב כדי לגשת לאותו אוסף נתונים (כמו בקובץ route (1).js)
-const MailingListSchema = new mongoose.Schema({
-  listName: { type: String, required: true, unique: true },
-  emails: [{ type: String }]
-});
-// שימוש במודל קיים או יצירה מחדש אם לא קיים בזיכרון
-const MailingList = mongoose.models.MailingList || mongoose.model('MailingList', MailingListSchema);
 
 export async function GET(request) {
     try {
