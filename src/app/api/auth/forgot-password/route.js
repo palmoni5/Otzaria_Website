@@ -81,3 +81,8 @@ export async function POST(request) {
     user.resetPasswordExpires = resetTokenExpires;
     
     await user.save();
+  } catch (error) {
+    console.error('Error in forgot-password route:', error);
+    return NextResponse.json({ success: false, message: 'אירעה שגיאה בשרת. אנא נסה שוב מאוחר יותר.' }, { status: 500 });
+  }
+}
