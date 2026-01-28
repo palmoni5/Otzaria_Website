@@ -54,7 +54,7 @@ export async function POST(request) {
     user.dailyResetRequestsCount = (user.dailyResetRequestsCount || 0) + 1;
 
     await user.save();
-    console.log(`Token saved for user: ${user.email}`);
+    console.log(`Token saved for user with ID: ${user._id}`);
 
     const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
