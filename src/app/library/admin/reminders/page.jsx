@@ -101,7 +101,7 @@ export default function BookReminderPage() {
                             if (userId) {
                                 const userDetails = userMap.get(userId);
 
-                                if (userDetails && userDetails.email && userDetails.acceptReminders) {
+                                if (userDetails && userDetails.email && userDetails.acceptReminders && userDetails.isVerified) {
                                     console.log(`Found match: User ${userDetails.name} (${userDetails.email})`);
                                     foundEmails.add(userDetails.email);
                                 }else {

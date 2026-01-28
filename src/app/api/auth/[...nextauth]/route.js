@@ -31,39 +31,50 @@ export const authOptions = {
           throw new Error('סיסמה שגויה');
         }
 
-        // כאן אנחנו מחזירים אובייקט עם 'id' (בלי קו תחתון)
         return {
           id: user._id.toString(),
           email: user.email,
           name: user.name,
           role: user.role,
           acceptReminders: user.acceptReminders,
+          isVerified: user.isVerified,
         };
       },
     }),
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
-      // user קיים רק בהתחברות הראשונית (Login)
       if (user) {
-        // תיקון: משתמשים ב-user.id כי זה מה שהחזרנו ב-authorize
         token.id = user.id; 
         token.role = user.role;
         token.acceptReminders = user.acceptReminders;
+        token.isVerified = user.isVerified;
       }
-      if (trigger === "update" && session?.acceptReminders) {
-        token.acceptReminders = session.acceptReminders;
+      
+      if (trigger === "update") {
+        try {
+            await connectDB();
+            const freshUser = await User.findById(token.id);
+            if (freshUser) {
+                token.isVerified = freshUser.isVerified;
+                token.acceptReminders = freshUser.acceptReminders;
+                token.role = freshUser.role;
+                token.name = freshUser.name;
+            }
+        } catch (error) {
+            console.error("Error refreshing user token:", error);
+        }
       }
       return token;
     },
     async session({ session, token }) {
       if (token) {
-        // מעבירים את ה-ID מהטוקן לסשן
         session.user.id = token.id;
-        // ליתר ביטחון, נגדיר גם _id לתאימות לאחור
         session.user._id = token.id;
         session.user.role = token.role;
+        session.user.name = token.name;
         session.user.acceptReminders = token.acceptReminders;
+        session.user.isVerified = token.isVerified;
       }
       return session;
     },

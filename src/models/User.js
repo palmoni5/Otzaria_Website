@@ -11,6 +11,8 @@ const UserSchema = new mongoose.Schema({
   resetPasswordExpires: { type: Date },
   lastResetRequest: { type: Date },
   dailyResetRequestsCount: { type: Number, default: 0 },
+  isVerified: { type: Boolean, default: false },
+  verificationToken: { type: String },
   
   savedSearches: [{
     id: { type: String },
