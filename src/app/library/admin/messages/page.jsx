@@ -58,7 +58,7 @@ export default function AdminMessagesPage() {
           const res = await fetch('/api/messages/reply', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ messageId, reply: replyText })
+              body: JSON.stringify({ messageId, reply: replyText, fromAdminPanel: true })
           })
           if (res.ok) {
               setReplyText('')

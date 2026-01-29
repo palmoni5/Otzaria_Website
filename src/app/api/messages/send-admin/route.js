@@ -4,6 +4,7 @@ import Message from '@/models/Message';
 import User from '@/models/User';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import mongoose from 'mongoose';
 
 export async function POST(request) {
   try {
@@ -15,17 +16,20 @@ export async function POST(request) {
     const { recipientId, subject, message, sendToAll } = await request.json();
     await connectDB();
 
+    // יצירת מזהה מנהל תקין למסד הנתונים
+    const adminId = new mongoose.Types.ObjectId(session.user._id || session.user.id);
+
     if (sendToAll) {
-      // שליפה של כל המשתמשים (למעט האדמין עצמו והבוטים אם יש)
+      // שליפה של כל המשתמשים (למעט האדמין עצמו)
       const users = await User.find({ role: { $ne: 'admin' } }).select('_id');
       
-      // יצירת הודעות ב-Bulk ליעילות
       const messages = users.map(user => ({
-        sender: session.user._id,
+        sender: adminId,
         recipient: user._id,
         subject,
         content: message,
-        isRead: false
+        isRead: true, 
+        readBy: [adminId] 
       }));
 
       await Message.insertMany(messages);
@@ -36,20 +40,22 @@ export async function POST(request) {
       });
 
     } else {
-      // שליחה למשתמש ספציפי
       if (!recipientId) return NextResponse.json({ error: 'Missing recipient' }, { status: 400 });
 
       await Message.create({
-        sender: session.user._id,
+        sender: adminId,
         recipient: recipientId,
         subject,
-        content: message
+        content: message,
+        isRead: true,
+        readBy: [adminId]
       });
 
       return NextResponse.json({ success: true, message: 'נשלח בהצלחה' });
     }
 
   } catch (error) {
+    console.error('Error sending admin message:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

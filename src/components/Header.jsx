@@ -16,7 +16,7 @@ export default function Header() {
       const loadUnreadCount = async () => {
         try {
           // תיקון נתיב: messages/list -> messages
-          const response = await fetch('/api/messages')
+          const response = await fetch('/api/messages?allMessages=true')
           const result = await response.json()
           if (result.success) {
             const unread = result.messages.filter(m => m.status === 'unread').length

@@ -45,7 +45,7 @@ export async function GET(request) {
             readBy: (msg.readBy || []).map(id => id.toString()),
             senderName: msg.sender?.name || 'משתמש לא ידוע',
             senderEmail: msg.sender?.email,
-            status: msg.replies?.length > 0 ? 'replied' : (msg.isRead ? 'read' : 'unread'),
+            status: !msg.isRead ? 'unread' : (msg.replies?.length > 0 ? 'replied' : 'read'),
             createdAt: msg.createdAt,
             replies: (msg.replies || []).map(r => ({
                 id: r._id.toString(),
