@@ -9,53 +9,65 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function POST(request) {
     try {
+        // 1. אימות סשן
         const session = await getServerSession(authOptions);
         if (!session) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { bookPath, pageNumber } = await request.json();
-        const userId = session.user.id; // שימוש ב-ID מהסשן המאובטח ולא מהבקשה!
-
+        const userId = session.user.id || session.user._id;
         if (!userId) {
              return NextResponse.json({ success: false, error: 'User ID missing' }, { status: 450 });
         }
 
+        // 2. חילוץ נתונים מהבקשה
+        const { bookPath, pageNumber } = await request.json();
+
+        // 3. חיבור לבסיס הנתונים (פעם אחת)
         await connectDB();
 
+        // 4. בדיקת סטטוס המשתמש (acceptReminders)
+        const user = await User.findById(userId);
+        if (!user || !user.acceptReminders) {
+            return NextResponse.json({ 
+                success: false, 
+                error: 'TERMS_REQUIRED',
+                redirectUrl: '/library/auth/approve-terms-on-edit'
+            }, { status: 403 });
+        }
+
+        // 5. מציאת הספר והעמוד
         const book = await Book.findOne({ slug: decodeURIComponent(bookPath) });
         if (!book) return NextResponse.json({ error: 'Book not found' }, { status: 404 });
 
         const page = await Page.findOne({ book: book._id, pageNumber });
         if (!page) return NextResponse.json({ error: 'Page not found' }, { status: 404 });
 
-        // בדיקה 1: אם העמוד בטיפול של מישהו אחר
-        if (page.status === 'in-progress' && page.claimedBy && page.claimedBy.toString() !== userId) {
-             return NextResponse.json({ success: false, error: 'העמוד כבר בטיפול ע"י משתמש אחר' }, { status: 409 });
+        // 6. בדיקות בעלות (האם תפוס/הושלם ע"י אחר)
+        const isClaimedByOther = page.claimedBy && page.claimedBy.toString() !== userId.toString();
+        
+        if ((page.status === 'in-progress' || page.status === 'completed') && isClaimedByOther) {
+             return NextResponse.json({ 
+                success: false, 
+                error: `העמוד כבר ${page.status === 'completed' ? 'הושלם' : 'בטיפול'} ע"י משתמש אחר` 
+            }, { status: 409 });
         }
 
-        // בדיקה 2: אם העמוד הושלם ע"י מישהו אחר
-        if (page.status === 'completed' && page.claimedBy && page.claimedBy.toString() !== userId) {
-            return NextResponse.json({ success: false, error: 'העמוד כבר הושלם ע"י משתמש אחר' }, { status: 409 });
-        }
-
-        // לוגיקה חדשה: אם הדף היה "הושלם" ועכשיו חוזר ל"בטיפול", נעדכן את מונה הספר
+        // 7. לוגיקת עדכון
         const wasCompleted = page.status === 'completed';
 
-        // עדכון סטטוס
         page.status = 'in-progress';
         page.claimedBy = new mongoose.Types.ObjectId(userId);
         page.claimedAt = new Date();
-        // מאפסים את תאריך ההשלמה כי הוא חזר לעריכה
         page.completedAt = undefined; 
         await page.save();
 
+        // 8. עדכונים רוחביים (מונה ספר ונקודות משתמש)
         if (wasCompleted) {
-            // מפחיתים 1 ממונה הדפים שהושלמו בספר
             await Book.findByIdAndUpdate(book._id, { $inc: { completedPages: -1 } });
         }
 
-        // עדכון נקודות (אופציונלי)
+        // הוספת נקודות למשתמש
         await User.findByIdAndUpdate(userId, { $inc: { points: 5 } });
 
         return NextResponse.json({ success: true, page });
