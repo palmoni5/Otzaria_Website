@@ -128,7 +128,9 @@ export default function BookPage() {
     }
   };
 
-  const handleClaimPage = async (pageNumber) => {
+  // בתוך הקומפוננטה BookPage, בתוך הפונקציה handleClaimPage:
+
+const handleClaimPage = async (pageNumber) => {
     if (!session) {
       router.push('/library/auth/login')
       return
@@ -139,8 +141,8 @@ export default function BookPage() {
       onConfirm: async () => {
         setConfirmDialog(null)
             if (!session.user || (!session.user.id && !session.user._id)) {
-        alert('שגיאת התחברות: חסר מזהה משתמש. נסה להתחבר מחדש.');
-        return;
+            alert('שגיאת התחברות: חסר מזהה משתמש. נסה להתחבר מחדש.');
+            return;
         }
         try {
           const userId = session.user._id || session.user.id;
@@ -171,8 +173,14 @@ export default function BookPage() {
               )
             )
           } else {
+            if (result.error === 'TERMS_NOT_ACCEPTED' || result.redirectUrl) {
+                router.push('/library/auth/approve-terms-on-edit');
+                return;
+            }
+            
             alert(`❌ ${result.error}`)
           }
+
         } catch (error) {
           console.error('Error claiming page:', error)
           alert('❌ שגיאה בתפיסת העמוד')
