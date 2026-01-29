@@ -46,7 +46,7 @@ export async function POST(request) {
                 <div dir="rtl" style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 11px; color: #999; text-align: center; font-family: sans-serif;">
                     קיבלת הודעה זו ממערכת אוצריא.
                     <br>
-                    <a href="${unsubUrl}" style="color: #999; text-decoration: underline;">להסרה מקבלת תזכורות במייל</a>
+                    <a href="${unsubUrl}" style="color: #999; text-decoration: underline;">להסרה מקבלת תזכורות במייל<br>שים לב שלא תוכל לערוך עוד באתר כל עוד לא תאשר קבלת מיילים!<br>התזכורות נצרכות לצורך תפעול תקין של המערכת.</a>
                 </div>
             `;
 

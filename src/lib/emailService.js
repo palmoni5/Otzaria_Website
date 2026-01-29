@@ -42,7 +42,7 @@ export async function sendBookNotification(bookName, bookSlug) {
                     <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 11px; color: #999; text-align: center;">
                         קיבלת הודעה זו כי נרשמת לעדכונים מאוצריא. 
                         <br>
-                        <a href="${unsubUrl}" style="color: #999; text-decoration: underline;">הסרה מרשימת התפוצה</a>
+                        <a href="${unsubUrl}" style="color: #999; text-decoration: underline;">הסרה מרשימת התפוצה<br>שים לב שלא תקבל עוד עדכונים על ספרים חדשים!</a>
                     </div>
                 </div>
             </div>
