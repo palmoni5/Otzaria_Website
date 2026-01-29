@@ -1,10 +1,31 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
 export default function VerifyRequestPage() {
-    const { data: session } = useSession();
+    const { data: session, update } = useSession();
+    const router = useRouter();
     const [status, setStatus] = useState({ loading: false, message: '', error: '' });
+
+    useEffect(() => {
+        if (session?.user?.isVerified) {
+            router.push('/library/dashboard');
+        }
+    }, [session, router]);
+
+    useEffect(() => {
+        if (session && !session.user.emailVerified) {
+            const interval = setInterval(async () => {
+                const newSession = await update();
+                if (session?.user?.isVerified) {
+                    router.push('/library/dashboard');
+                }
+            }, 5000); 
+
+            return () => clearInterval(interval);
+        }
+    }, [session, update, router]);
 
     const handleSendVerification = async () => {
         setStatus({ loading: true, message: '', error: '' });
@@ -57,7 +78,7 @@ export default function VerifyRequestPage() {
                     className={`w-full py-4 px-6 rounded-xl font-bold text-lg transition-all shadow-md flex items-center justify-center gap-2
                         ${status.message 
                             ? 'bg-green-600 text-white cursor-default' 
-                            : 'bg-primary text-white hover:bg-blue-700 hover:shadow-lg'}`}
+                            : 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg'}`}
                 >
                     {status.loading ? (
                         <>
@@ -67,7 +88,7 @@ export default function VerifyRequestPage() {
                     ) : status.message ? (
                         <>
                             <span className="material-symbols-outlined">check_circle</span>
-                            נשלח בהצלחה
+                            נשלח! ממתין לאימות שלך...
                         </>
                     ) : (
                         <>

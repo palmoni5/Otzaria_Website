@@ -1,21 +1,25 @@
 'use client';
+import { useState, useEffect } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-
-// 1. כל הלוגיקה וה-JSX עוברים לכאן
-function ResetPasswordContent() {
+export default function ResetPasswordPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const token = searchParams.get('token'); 
+  const params = useParams();
+  const token = params.token;
   
+  // שדות לטופס
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // ניהול סטטוס הטוקן והטעינה
   const [isCheckingToken, setIsCheckingToken] = useState(true);
   const [isValidToken, setIsValidToken] = useState(false);
   const [tokenError, setTokenError] = useState('');
+
+  // סטטוס שליחת הטופס
   const [status, setStatus] = useState({ loading: false, error: '', success: '' });
 
+  // בדיקת תקינות הטוקן בטעינת הדף
   useEffect(() => {
       if (!token) {
           setIsCheckingToken(false);
@@ -26,6 +30,7 @@ function ResetPasswordContent() {
 
       const verifyToken = async () => {
           try {
+              // שולחים את הטוקן בבקשה לשרת
               const res = await fetch(`/api/auth/reset-password?token=${token}`);
               const data = await res.json();
 
@@ -48,6 +53,7 @@ function ResetPasswordContent() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     if (password !== confirmPassword) {
         setStatus({ loading: false, error: 'הסיסמאות אינן תואמות', success: '' });
         return;
@@ -63,10 +69,17 @@ function ResetPasswordContent() {
         });
 
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'שגיאה בשרת');
+
+        if (!res.ok) {
+            throw new Error(data.error || 'שגיאה בשרת');
+        }
 
         setStatus({ loading: false, error: '', success: 'הסיסמה שונתה בהצלחה! מעביר להתחברות...' });
-        setTimeout(() => router.push('/library/auth/login'), 2000);
+        
+        setTimeout(() => {
+            router.push('/library/auth/login');
+        }, 2000);
+
     } catch (error) {
         setStatus({ loading: false, error: error.message, success: '' });
     }
@@ -89,11 +102,14 @@ function ResetPasswordContent() {
                   </div>
                   <h2 className="text-xl font-bold text-gray-900 mb-2">קישור לא תקין</h2>
                   <p className="text-gray-600 mb-6">
-                      {tokenError || 'הקישור לאיפוס הסיסמה פג תוקף או שאינו תקין.'}
+                      הקישור לאיפוס הסיסמה פג תוקף או שאינו תקין.
                       <br/>
                       אנא נסה לבקש איפוס סיסמה מחדש.
                   </p>
-                  <button onClick={() => router.push('/library/auth/login')} className="text-primary font-bold hover:underline">
+                  <button
+                      onClick={() => router.push('/library/auth/login')}
+                      className="text-primary font-bold hover:underline"
+                  >
                       חזור לדף הכניסה
                   </button>
               </div>
@@ -105,6 +121,7 @@ function ResetPasswordContent() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg">
             <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">איפוס סיסמה</h2>
+            
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">סיסמה חדשה</label>
@@ -129,30 +146,29 @@ function ResetPasswordContent() {
                         placeholder="הקלד שוב את הסיסמה"
                     />
                 </div>
-                {status.error && <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">{status.error}</div>}
-                {status.success && <div className="p-3 bg-green-50 text-green-700 rounded-lg text-sm">{status.success}</div>}
+
+                {status.error && (
+                    <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+                        {status.error}
+                    </div>
+                )}
+                
+                {status.success && (
+                    <div className="p-3 bg-green-50 text-green-700 rounded-lg text-sm">
+                        {status.success}
+                    </div>
+                )}
+
                 <button
                     type="submit"
                     disabled={status.loading}
-                    className={`w-full py-3 rounded-xl text-white font-bold transition-all ${status.loading ? 'bg-gray-400' : 'bg-primary hover:bg-blue-700'}`}
+                    className={`w-full py-3 rounded-xl text-white font-bold transition-all
+                        ${status.loading ? 'bg-gray-400' : 'bg-primary hover:bg-blue-700'}`}
                 >
                     {status.loading ? 'מעדכן...' : 'שמור סיסמה חדשה'}
                 </button>
             </form>
         </div>
     </div>
-  );
-}
-
-// 2. קומפוננטת הדף הראשי שעוטפת ב-Suspense
-export default function ResetPasswordPage() {
-  return (
-    <Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
-        </div>
-    }>
-      <ResetPasswordContent />
-    </Suspense>
   );
 }
