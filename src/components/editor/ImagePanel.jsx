@@ -20,16 +20,18 @@ export default function ImagePanel({
 }) {
   const imageContainerRef = useRef(null)
   const autoScrollRef = useRef(null)
-  const contentRef = useRef(null)
+  const wrapperRef = useRef(null)
+  const imageRef = useRef(null)
   const [isRotating, setIsRotating] = useState(false)
 
+  // --- לוגיקת סיבוב ---
   useEffect(() => {
     if (!isRotating) return
 
     const handleRotateMove = (e) => {
-      if (!contentRef.current) return
+      if (!wrapperRef.current) return
       
-      const rect = contentRef.current.getBoundingClientRect()
+      const rect = wrapperRef.current.getBoundingClientRect()
       const centerX = rect.left + rect.width / 2
       const centerY = rect.top + rect.height / 2
       
@@ -70,29 +72,29 @@ export default function ImagePanel({
     setRotation(prev => Math.round((prev + 0.1) * 10) / 10)
   }
 
-  const getImageCoordinates = (e, img) => {
-    const container = img.parentElement
+  // --- לוגיקת בחירה (Selection) ---
+  const getWrapperCoordinates = (e) => {
+    if (!wrapperRef.current) return { x: 0, y: 0, displayX: 0, displayY: 0 }
+    
+    const container = wrapperRef.current
     const containerRect = container.getBoundingClientRect()
-    const containerX = e.clientX - containerRect.left
-    const containerY = e.clientY - containerRect.top
+    
+    const displayX = e.clientX - containerRect.left
+    const displayY = e.clientY - containerRect.top
+    
     const scale = imageZoom / 100
-    const displayX = containerX 
-    const displayY = containerY
-    const x = (displayX / scale)
-    const y = (displayY / scale)
+    const x = displayX / scale
+    const y = displayY / scale
+    
     return { x, y, displayX, displayY }
   }
 
   const handleMouseDown = (e) => {
-    if (isRotating || !isSelectionMode || e.target.classList.contains('selection-overlay') || e.target.closest('.rotation-controls')) return
-    
-    e.preventDefault()
+    if (isRotating || !isSelectionMode || e.target.closest('.rotation-controls')) return
+    if (e.target.tagName === 'IMG') e.preventDefault()
+
     e.stopPropagation()
-    const img = e.currentTarget.querySelector('img')
-    if (!img) return
-    const coords = getImageCoordinates(e, img)
-    const scale = imageZoom / 100
-    if (coords.displayX < 0 || coords.displayY < 0 || coords.displayX > img.naturalWidth * scale || coords.displayY > img.naturalHeight * scale) return
+    const coords = getWrapperCoordinates(e)
     setSelectionStart(coords)
     setSelectionEnd(coords)
     setSelectionRect(null)
@@ -102,9 +104,8 @@ export default function ImagePanel({
     if (isRotating || !isSelectionMode || !selectionStart) return
     e.preventDefault()
     e.stopPropagation()
-    const img = e.currentTarget.querySelector('img')
-    if (!img) return
-    const coords = getImageCoordinates(e, img)
+    
+    const coords = getWrapperCoordinates(e)
     setSelectionEnd(coords)
 
     const scrollContainer = imageContainerRef.current
@@ -137,35 +138,25 @@ export default function ImagePanel({
     e.preventDefault()
     e.stopPropagation()
 
-    const container = e.currentTarget
-    const containerRect = container.getBoundingClientRect()
-    const minDisplayX = Math.min(selectionStart.displayX, selectionEnd.displayX)
-    const maxDisplayX = Math.max(selectionStart.displayX, selectionEnd.displayX)
-    const minDisplayY = Math.min(selectionStart.displayY, selectionEnd.displayY)
-    const maxDisplayY = Math.max(selectionStart.displayY, selectionEnd.displayY)
-    const displayWidth = maxDisplayX - minDisplayX
-    const displayHeight = maxDisplayY - minDisplayY
+    const minX = Math.min(selectionStart.x, selectionEnd.x)
+    const maxX = Math.max(selectionStart.x, selectionEnd.x)
+    const minY = Math.min(selectionStart.y, selectionEnd.y)
+    const maxY = Math.max(selectionStart.y, selectionEnd.y)
+    
+    const width = maxX - minX
+    const height = maxY - minY
 
-    if (displayWidth < 20 || displayHeight < 20) {
+    if (width < 5 || height < 5) {
       setSelectionStart(null)
       setSelectionEnd(null)
       return
     }
 
-    const minX = Math.min(selectionStart.x, selectionEnd.x)
-    const maxX = Math.max(selectionStart.x, selectionEnd.x)
-    const minY = Math.min(selectionStart.y, selectionEnd.y)
-    const maxY = Math.max(selectionStart.y, selectionEnd.y)
-
     setSelectionRect({
-      displayX: containerRect.width - maxDisplayX,
-      displayY: minDisplayY,
-      displayWidth,
-      displayHeight,
       x: minX,
       y: minY,
-      width: maxX - minX,
-      height: maxY - minY
+      width: width,
+      height: height
     })
     setSelectionStart(null)
     setSelectionEnd(null)
@@ -188,93 +179,91 @@ export default function ImagePanel({
             className="relative mx-auto flex items-center justify-center min-h-full"
             style={{ 
               width: 'fit-content',
-              paddingTop: '0px',
               paddingBottom: '40px'
             }}
           >
             <div
-              ref={contentRef}
+              ref={wrapperRef}
               className="inline-block relative transition-transform duration-75 ease-linear group"
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               style={{ 
-                transform: `scale(${imageZoom / 100}) rotate(${rotation}deg)`,
+                transform: `scale(${imageZoom / 100})`,
                 cursor: isSelectionMode ? 'crosshair' : 'default',
                 transformOrigin: 'center center',
-                willChange: 'transform'
               }}
             >
+              
               <div 
-                className="rotation-controls absolute top-2 left-1/2 flex items-center gap-2 z-[100] opacity-0 group-hover:opacity-100 transition-opacity" // top-2 (בתוך התמונה), z-[100] (גובר על הכל)
-                style={{ transform: `translateX(-50%) scale(${100 / imageZoom})` }}
-              >
-
-                <button 
-                  className="w-4 h-4 bg-gray-600/90 border border-gray-100 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-700 transition-colors font-bold leading-none pb-0.5 backdrop-blur-sm"
-                  onMouseDown={rotateRight}
-                  title="סובב 0.1° ימינה"
-                >
-                  <span>&lt;</span>
-                </button>
-
-                <div 
-                  className="rotation-handle relative w-8 h-8 bg-gray-800/90 border border-gray-600 rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing shadow-lg backdrop-blur-sm"
-                  onMouseDown={handleRotationStart}
-                  title="גרור לסיבוב חופשי"
-                >
-                   <span className="material-symbols-outlined text-white text-sm">sync</span>
-                   <div className="absolute top-7 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-white/40 pointer-events-none"></div>
-                   
-                   {(isRotating || rotation !== 0) && (
-                     <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap dir-ltr shadow-md border border-gray-700">
-                       {Number(rotation).toFixed(1)}°
-                     </div>
-                   )}
-                </div>
-
-                <button 
-                  className="w-4 h-4 bg-gray-600/90 border border-gray-100 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-700 transition-colors font-bold leading-none pb-0.5 backdrop-blur-sm"
-                  onMouseDown={rotateLeft}
-                  title="סובב 0.1° שמאלה"
-                >
-                  <span>&gt;</span>
-                </button>
-              </div>
-
-              <img
-                src={thumbnailUrl}
-                alt={`עמוד ${pageNumber}`}
-                className="rounded-lg shadow-lg select-none block"
-                style={{
-                  maxWidth: 'none',
-                  pointerEvents: 'none'
+                style={{ 
+                    transform: `rotate(${rotation}deg)`, 
+                    transition: isRotating ? 'none' : 'transform 0.1s ease-out',
+                    position: 'relative'
                 }}
-                onDragStart={(e) => e.preventDefault()}
-              />
+              >
+                  <div 
+                    className="rotation-controls absolute top-2 left-1/2 flex items-center gap-2 z-[100] opacity-0 group-hover:opacity-100 transition-opacity"
+                    style={{ transform: `translateX(-50%) scale(${100 / imageZoom})` }}
+                  >
+                    <button 
+                      className="w-4 h-4 bg-gray-600/90 border border-gray-100 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-700 transition-colors font-bold leading-none pb-0.5 backdrop-blur-sm"
+                      onMouseDown={rotateRight}
+                    ><span>&lt;</span></button>
+
+                    <div 
+                      className="rotation-handle relative w-8 h-8 bg-gray-800/90 border border-gray-600 rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing shadow-lg backdrop-blur-sm"
+                      onMouseDown={handleRotationStart}
+                    >
+                      <span className="material-symbols-outlined text-white text-sm">sync</span>
+                      {(isRotating || rotation !== 0) && (
+                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap dir-ltr shadow-md border border-gray-700">
+                          {Number(rotation).toFixed(1)}°
+                        </div>
+                      )}
+                    </div>
+
+                    <button 
+                      className="w-4 h-4 bg-gray-600/90 border border-gray-100 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-700 transition-colors font-bold leading-none pb-0.5 backdrop-blur-sm"
+                      onMouseDown={rotateLeft}
+                    ><span>&gt;</span></button>
+                  </div>
+
+                  <img
+                    ref={imageRef}
+                    src={thumbnailUrl}
+                    alt={`עמוד ${pageNumber}`}
+                    className="rounded-lg shadow-lg select-none block"
+                    style={{
+                      maxWidth: 'none',
+                      pointerEvents: 'none'
+                    }}
+                    onDragStart={(e) => e.preventDefault()}
+                  />
+              </div>
               
               {isSelectionMode && selectionStart && selectionEnd && (
                 <div
-                  className="absolute border-2 border-blue-500 bg-blue-500/20 pointer-events-none selection-overlay"
+                  className="absolute border-2 border-blue-500 bg-blue-500/20 pointer-events-none"
                   style={{
-                    left: `${Math.min(selectionStart.displayX, selectionEnd.displayX)}px`,
-                    top: `${Math.min(selectionStart.displayY, selectionEnd.displayY)}px`,
-                    width: `${Math.abs(selectionStart.displayX - selectionEnd.displayX)}px`,
-                    height: `${Math.abs(selectionStart.displayY - selectionEnd.displayY)}px`
+                    left: `${Math.min(selectionStart.x, selectionEnd.x)}px`,
+                    top: `${Math.min(selectionStart.y, selectionEnd.y)}px`,
+                    width: `${Math.abs(selectionStart.x - selectionEnd.x)}px`,
+                    height: `${Math.abs(selectionStart.y - selectionEnd.y)}px`
                   }}
                 />
               )}
               {selectionRect && (
                 <div
-                  className="absolute border-4 border-green-500 bg-green-500/10 pointer-events-none animate-pulse selection-overlay"
+                  className="absolute border-4 border-green-500 bg-green-500/10 pointer-events-none animate-pulse"
                   style={{
-                    left: `${selectionRect.x * (imageZoom / 100)}px`,
-                    top: `${selectionRect.y * (imageZoom / 100)}px`,
-                    width: `${selectionRect.width * (imageZoom / 100)}px`,
-                    height: `${selectionRect.height * (imageZoom / 100)}px`
+                    left: `${selectionRect.x}px`,
+                    top: `${selectionRect.y}px`,
+                    width: `${selectionRect.width}px`,
+                    height: `${selectionRect.height}px`
                   }}
                 >
-                  <div 
+                   <div 
                     className="absolute -top-8 right-0 bg-green-500 text-white px-2 py-1 rounded text-xs font-bold whitespace-nowrap"
                     style={{ transform: `scale(${100 / imageZoom})`, transformOrigin: 'bottom right' }}
                   >
@@ -293,10 +282,7 @@ export default function ImagePanel({
           </div>
         ) : (
           <div className="flex items-center justify-center min-h-full bg-surface rounded-lg w-full">
-            <div className="text-center">
-              <span className="material-symbols-outlined text-9xl text-on-surface/20 block mb-4">description</span>
-              <p className="text-on-surface/60">אין תמונה זמינה</p>
-            </div>
+            <p className="text-on-surface/60">אין תמונה זמינה</p>
           </div>
         )}
       </div>
@@ -312,13 +298,7 @@ export default function ImagePanel({
         }}
         onMouseDown={handleResizeStart}
       >
-        <div
-          className="absolute bg-surface-variant rounded-full"
-          style={{
-            width: layoutOrientation === 'horizontal' ? '32px' : '4px',
-            height: layoutOrientation === 'horizontal' ? '4px' : '32px'
-          }}
-        ></div>
+         <div className="absolute bg-surface-variant rounded-full" style={{ width: layoutOrientation === 'horizontal' ? '32px' : '4px', height: layoutOrientation === 'horizontal' ? '4px' : '32px' }}></div>
       </div>
     </>
   )

@@ -658,19 +658,33 @@ export default function EditPage() {
     cancelOCRRef.current = false
     setIsOCRBlocking(true)
 
-    const response = await fetch(pageData.thumbnail)
-    const blob = await response.blob()
-    const img = await createImageBitmap(blob)
-    const canvas = document.createElement('canvas')
-    canvas.width = selectionRect.width
-    canvas.height = selectionRect.height
-    const ctx = canvas.getContext('2d')
-    ctx.drawImage(img, selectionRect.x, selectionRect.y, selectionRect.width, selectionRect.height, 0, 0, selectionRect.width, selectionRect.height)
-    const croppedBlob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.95))
-    
     try {
-        let text = ''
+        const response = await fetch(pageData.thumbnail)
+        const blob = await response.blob()
+        const img = await createImageBitmap(blob)
+        
+        const canvas = document.createElement('canvas')
+        canvas.width = selectionRect.width
+        canvas.height = selectionRect.height
+        const ctx = canvas.getContext('2d')
+        
+        ctx.translate(canvas.width / 2, canvas.height / 2)
+        
+        ctx.rotate((rotation * Math.PI) / 180)
+        
+        const selCenterX = selectionRect.x + selectionRect.width / 2
+        const selCenterY = selectionRect.y + selectionRect.height / 2
+        
+        const imgCenterX = img.width / 2
+        const imgCenterY = img.height / 2
+        
+        ctx.drawImage(img, -selCenterX, -selCenterY)
+
+        const croppedBlob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.95))
+        
         if (cancelOCRRef.current) return
+
+        let text = ''
         if (ocrMethod === 'gemini') text = await performGeminiOCR(croppedBlob, userApiKey, selectedModel, customPrompt)
         else if (ocrMethod === 'ocrwin') text = await performOCRWin(croppedBlob)
         else text = await performTesseractOCR(croppedBlob)
@@ -693,6 +707,7 @@ export default function EditPage() {
         setSelectionRect(null)
         setIsSelectionMode(false)
     } catch (e) {
+        console.error(e)
         if (!cancelOCRRef.current) alert('שגיאה ב-OCR: ' + e.message)
     } finally {
         setIsOCRBlocking(false)

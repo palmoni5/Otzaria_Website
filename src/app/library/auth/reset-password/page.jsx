@@ -1,10 +1,11 @@
 'use client';
-import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function ResetPasswordPage({ params }) {
-  const { token } = params;
+export default function ResetPasswordPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get('token'); // שליפת הטוקן מה-URL (אחרי סימן השאלה)
   
   // שדות לטופס
   const [password, setPassword] = useState('');
@@ -20,6 +21,14 @@ export default function ResetPasswordPage({ params }) {
 
   // בדיקת תקינות הטוקן בטעינת הדף
   useEffect(() => {
+      // אם אין טוקן בכלל ב-URL, נציג שגיאה מיד
+      if (!token) {
+          setIsCheckingToken(false);
+          setIsValidToken(false);
+          setTokenError('לא נמצא קישור לאיפוס סיסמה');
+          return;
+      }
+
       const verifyToken = async () => {
           try {
               const res = await fetch(`/api/auth/reset-password?token=${token}`);

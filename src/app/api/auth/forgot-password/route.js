@@ -66,7 +66,7 @@ export async function POST(request) {
         },
     });
 
-    const resetUrl = `${process.env.NEXTAUTH_URL}/library/auth/reset-password/${resetToken}`;
+    const resetUrl = `${process.env.NEXTAUTH_URL}/library/auth/reset-password?token=${resetToken}`;
 
     await transporter.sendMail({
         from: `"Otzaria Support" <${process.env.SMTP_FROM}>`,
