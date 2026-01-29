@@ -7,8 +7,8 @@ import ReminderHistory from '@/lib/models/reminderHistory';
 export async function GET(req) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    if (!session || session.user?.role !== 'admin') {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 403 });
     }
 
     await dbConnect();
