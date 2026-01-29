@@ -35,7 +35,7 @@ export async function sendBookNotification(bookName, bookSlug) {
                         </p>
                         <div style="margin: 30px 0;">
                             <a href="${process.env.NEXTAUTH_URL}/library/book/${bookSlug}" style="background-color: #d4a373; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
-                                כנס לספרייה לקריאה
+                                כנס לספרייה לעריכה
                             </a>
                         </div>
                     </div>

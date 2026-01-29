@@ -5,14 +5,18 @@ import bcrypt from 'bcryptjs';
 
 export async function GET(request) {
     try {
+        
         const { searchParams } = new URL(request.url);
         const token = searchParams.get('token');
+
 
         if (!token) {
             return NextResponse.json({ valid: false, message: 'חסר טוקן' }, { status: 400 });
         }
 
         await connectDB();
+
+        const userExists = await User.findOne({ resetPasswordToken: token });
 
         const user = await User.findOne({
             resetPasswordToken: token,
@@ -26,7 +30,6 @@ export async function GET(request) {
         return NextResponse.json({ valid: true });
 
     } catch (error) {
-        console.error('Check Token Error:', error);
         return NextResponse.json({ valid: false, message: 'שגיאת שרת' }, { status: 500 });
     }
 }
