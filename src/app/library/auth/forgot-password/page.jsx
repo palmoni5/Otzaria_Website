@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
       const data = await res.json()
       
       if (res.ok) {
-        setStatus({ loading: false, message: 'מייל לאיפוס סיסמה נשלח אליך!', error: '' })
+        setStatus({ loading: false, message:  'אם המייל קיים, נשלחה הודעה.' , error: '' })
       } else {
         setStatus({ loading: false, message: '', error: data.error || 'שגיאה בשליחה' })
       }

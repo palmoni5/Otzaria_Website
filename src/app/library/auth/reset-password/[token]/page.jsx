@@ -1,80 +1,166 @@
-'use client'
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Image from 'next/image'
+'use client';
+import { useState, useEffect, use } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function ResetPasswordPage({ params }) {
-  const { token } = params
-  const router = useRouter()
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [status, setStatus] = useState({ loading: false, message: '', error: '' })
+  const { token } = params;
+  const router = useRouter();
+  
+  // שדות לטופס
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  
+  // ניהול סטטוס הטוקן והטעינה
+  const [isCheckingToken, setIsCheckingToken] = useState(true);
+  const [isValidToken, setIsValidToken] = useState(false);
+  const [tokenError, setTokenError] = useState('');
+
+  // סטטוס שליחת הטופס
+  const [status, setStatus] = useState({ loading: false, error: '', success: '' });
+
+  // בדיקת תקינות הטוקן בטעינת הדף
+  useEffect(() => {
+      const verifyToken = async () => {
+          try {
+              const res = await fetch(`/api/auth/reset-password?token=${token}`);
+              const data = await res.json();
+
+              if (res.ok && data.valid) {
+                  setIsValidToken(true);
+              } else {
+                  setIsValidToken(false);
+                  setTokenError(data.message || 'הקישור אינו תקין');
+              }
+          } catch (error) {
+              setIsValidToken(false);
+              setTokenError('שגיאת תקשורת בבדיקת הקישור');
+          } finally {
+              setIsCheckingToken(false);
+          }
+      };
+
+      verifyToken();
+  }, [token]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (password !== confirmPassword) {
-        setStatus({ ...status, error: 'הסיסמאות אינן תואמות' })
-        return
-    }
+    e.preventDefault();
     
-    setStatus({ loading: true, message: '', error: '' })
+    if (password !== confirmPassword) {
+        setStatus({ loading: false, error: 'הסיסמאות אינן תואמות', success: '' });
+        return;
+    }
+
+    setStatus({ loading: true, error: '', success: '' });
 
     try {
-      const res = await fetch('/api/auth/reset-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, password })
-      })
-      const data = await res.json()
-      
-      if (res.ok) {
-        setStatus({ loading: false, message: 'הסיסמה שונתה בהצלחה! מעביר להתחברות...', error: '' })
-        setTimeout(() => router.push('/library/auth/login'), 2000)
-      } else {
-        setStatus({ loading: false, message: '', error: data.error || 'שגיאה בשינוי הסיסמה' })
-      }
+        const res = await fetch('/api/auth/reset-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, password }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.error || 'שגיאה בשרת');
+        }
+
+        setStatus({ loading: false, error: '', success: 'הסיסמה שונתה בהצלחה! מעביר להתחברות...' });
+        
+        setTimeout(() => {
+            router.push('/library/auth/login');
+        }, 2000);
+
     } catch (error) {
-      setStatus({ loading: false, message: '', error: 'שגיאת תקשורת' })
+        setStatus({ loading: false, error: error.message, success: '' });
     }
+  };
+
+  if (isCheckingToken) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50">
+              <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
+          </div>
+      );
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gray-50">
-      <div className="max-w-md w-full glass-strong p-8 rounded-2xl shadow-xl text-center">
-        <div className="flex justify-center mb-6">
-            <Image src="/logo.png" alt="Logo" width={60} height={60} />
-        </div>
-        <h2 className="text-2xl font-bold mb-4">סיסמה חדשה</h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="סיסמה חדשה"
-              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary outline-none"
-            />
-            <input
-              type="password"
-              required
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="אימות סיסמה"
-              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-primary outline-none"
-            />
-            <button 
-                type="submit" 
-                disabled={status.loading}
-                className="w-full py-3 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
-            >
-                {status.loading ? 'מעדכן...' : 'שנה סיסמה'}
-            </button>
-        </form>
+  if (!isValidToken) {
+      return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+              <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg text-center">
+                  <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="material-symbols-outlined text-3xl text-red-600">link_off</span>
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">קישור לא תקין</h2>
+                  <p className="text-gray-600 mb-6">
+                      הקישור לאיפוס הסיסמה פג תוקף או שאינו תקין.
+                      <br/>
+                      אנא נסה לבקש איפוס סיסמה מחדש.
+                  </p>
+                  <button
+                      onClick={() => router.push('/library/auth/login')}
+                      className="text-primary font-bold hover:underline"
+                  >
+                      חזור לדף הכניסה
+                  </button>
+              </div>
+          </div>
+      );
+  }
 
-        {status.message && <div className="mt-4 p-3 bg-green-100 text-green-700 rounded">{status.message}</div>}
-        {status.error && <div className="mt-4 p-3 bg-red-100 text-red-700 rounded">{status.error}</div>}
-      </div>
+  // תצוגה רגילה (הטופס) - מופיעה רק אם isValidToken === true
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg">
+            <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">איפוס סיסמה</h2>
+            
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">סיסמה חדשה</label>
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        minLength={6}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"
+                        placeholder="לפחות 6 תווים"
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">אימות סיסמה חדשה</label>
+                    <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        required
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary outline-none"
+                        placeholder="הקלד שוב את הסיסמה"
+                    />
+                </div>
+
+                {status.error && (
+                    <div className="p-3 bg-red-50 text-red-700 rounded-lg text-sm">
+                        {status.error}
+                    </div>
+                )}
+                
+                {status.success && (
+                    <div className="p-3 bg-green-50 text-green-700 rounded-lg text-sm">
+                        {status.success}
+                    </div>
+                )}
+
+                <button
+                    type="submit"
+                    disabled={status.loading}
+                    className={`w-full py-3 rounded-xl text-white font-bold transition-all
+                        ${status.loading ? 'bg-gray-400' : 'bg-primary hover:bg-blue-700'}`}
+                >
+                    {status.loading ? 'מעדכן...' : 'שמור סיסמה חדשה'}
+                </button>
+            </form>
+        </div>
     </div>
-  )
+  );
 }

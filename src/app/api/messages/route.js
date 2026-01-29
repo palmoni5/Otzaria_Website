@@ -3,8 +3,10 @@ import connectDB from '@/lib/db';
 import Message from '@/models/Message';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import mongoose from 'mongoose';
 
-// קבלת הודעות שלי
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
     try {
         const session = await getServerSession(authOptions);
@@ -12,17 +14,14 @@ export async function GET(request) {
         
         await connectDB();
         
-        // אם אדמין - רואה הכל (או הודעות שנשלחו אליו/למנהלים).
-        // אם משתמש - רואה רק את שלו.
-        
+        const { searchParams } = new URL(request.url);
+        const showAll = searchParams.get('allMessages'); 
+
         let query = {};
         
-        if (session.user.role === 'admin') {
-            // אדמין רואה את כל ההודעות שנשלחו למערכת (recipient: null) או אליו ספציפית
-            // אפשר גם לאפשר לאדמין לראות הכל: query = {}
+        if (session.user.role === 'admin' && showAll === 'true') {
              query = {}; 
         } else {
-            // משתמש רגיל רואה הודעות ששלח או שנשלחו אליו
             query = { 
                 $or: [
                     { sender: session.user._id },
@@ -32,22 +31,24 @@ export async function GET(request) {
         }
 
         const messages = await Message.find(query)
-            .populate('sender', 'name email role') // לוודא ששולפים שם ואימייל
+            .populate('sender', 'name email role')
             .populate('replies.sender', 'name email role')
-            .sort({ createdAt: -1 });
+            .sort({ createdAt: -1 })
+            .lean();
 
-        // המרה לפורמט נוח לקריאה בקלאיינט
         const formattedMessages = messages.map(msg => ({
-            id: msg._id,
+            id: msg._id.toString(), 
             subject: msg.subject,
             content: msg.content,
-            sender: msg.sender, // אובייקט מלא (name, email, _id)
+            sender: msg.sender,
+            isRead: msg.isRead,
+            readBy: (msg.readBy || []).map(id => id.toString()),
             senderName: msg.sender?.name || 'משתמש לא ידוע',
             senderEmail: msg.sender?.email,
-            status: msg.replies?.length > 0 ? 'replied' : (msg.isRead ? 'read' : 'unread'),
+            status: !msg.isRead ? 'unread' : (msg.replies?.length > 0 ? 'replied' : 'read'),
             createdAt: msg.createdAt,
             replies: (msg.replies || []).map(r => ({
-                id: r._id,
+                id: r._id.toString(),
                 sender: r.sender?._id || r.sender,
                 senderName: r.sender?.name,
                 senderEmail: r.sender?.email,
@@ -64,7 +65,6 @@ export async function GET(request) {
     }
 }
 
-// שליחת הודעה
 export async function POST(request) {
     try {
         const session = await getServerSession(authOptions);
@@ -75,15 +75,77 @@ export async function POST(request) {
 
         await Message.create({
             sender: session.user._id,
-            recipient: recipientId || null, // null = למנהלים
+            recipient: recipientId || null,
             subject,
             content,
-            isRead: false
+            isRead: false,
+            readBy: []
         });
 
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Error sending message:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+}
+
+export async function PUT(request) {
+    console.log('🔄 PUT Request Started');
+    
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session) {
+            console.log('❌ Unauthorized PUT request');
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const { messageIds } = await request.json();
+        const userIdString = session.user._id || session.user.id;
+
+        console.log('👤 User attempting update:', userIdString);
+        console.log('📩 Messages IDs to update:', messageIds);
+
+        if (!messageIds || !Array.isArray(messageIds) || messageIds.length === 0) {
+            console.log('⚠️ No IDs provided');
+            return NextResponse.json({ success: true }); 
+        }
+
+        await connectDB();
+
+        let userObjectId;
+        let messageObjectIds = [];
+
+        try {
+            userObjectId = new mongoose.Types.ObjectId(userIdString);
+            
+            messageObjectIds = messageIds.map(id => new mongoose.Types.ObjectId(id));
+        } catch (e) {
+            console.error('❌ Conversion Error:', e);
+            return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
+        }
+
+        console.log(`🛠️ Executing DB Update...`);
+        console.log(`   Query IDs:`, messageObjectIds);
+        console.log(`   Adding User:`, userObjectId);
+
+        const result = await Message.updateMany(
+            { _id: { $in: messageObjectIds } },
+            { 
+                $addToSet: { readBy: userObjectId }
+            }
+        );
+
+        if (result.matchedCount === 0) {
+            console.error('⚠️ CRITICAL: No messages matched the IDs provided!');
+        }
+
+        return NextResponse.json({ 
+            success: true, 
+            debug: { matched: result.matchedCount, modified: result.modifiedCount } 
+        });
+
+    } catch (error) {
+        console.error('❌ FATAL ERROR in PUT:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

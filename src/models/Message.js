@@ -5,6 +5,7 @@ const MessageSchema = new mongoose.Schema({
   recipient: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null }, // null = הודעה למנהלים
   subject: { type: String, required: true },
   content: { type: String, required: true },
+  readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   isRead: { type: Boolean, default: false },
   replies: [{
     sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },

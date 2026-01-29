@@ -9,28 +9,31 @@ export async function POST(request) {
     const { email } = await request.json();
     await connectDB();
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ 
+        email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } 
+    });
     
     if (!user) {
-      return NextResponse.json({ success: true, message: 'אם המייל קיים, נשלחה הודעה.' });
+      return NextResponse.json({ success: true, message: 'אם המייל קיים במערכת, נשלחה הודעה.' });
     }
 
     const NOW = Date.now();
     const ONE_HOUR = 60 * 60 * 1000;
-    
+
     if (user.lastResetRequest) {
         const timeSinceLastRequest = NOW - new Date(user.lastResetRequest).getTime();
+        
         if (timeSinceLastRequest < ONE_HOUR) {
             return NextResponse.json({ 
                 success: false, 
-                message: 'ניתן לבקש איפוס סיסמה רק פעם אחת בשעה. אנא בדוק את תיבת המייל שלך.' 
+                error: 'כבר נשלח מייל בשעה האחרונה. אנא בדוק בתיבת הספאם או נסה שוב מאוחר יותר.' 
             }, { status: 429 });
         }
     }
 
     const lastRequestDate = user.lastResetRequest ? new Date(user.lastResetRequest) : new Date(0);
     const isSameDay = lastRequestDate.toDateString() === new Date(NOW).toDateString();
-
+    
     if (!isSameDay) {
         user.dailyResetRequestsCount = 0;
     }
@@ -38,12 +41,20 @@ export async function POST(request) {
     if (user.dailyResetRequestsCount >= 3) {
         return NextResponse.json({ 
             success: false, 
-            message: 'הגעת למגבלת הבקשות היומית. נסה שוב מחר.' 
+            error: 'הגעת למגבלת הבקשות היומית (3). נסה שוב מחר.' 
         }, { status: 429 });
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpires = Date.now() + ONE_HOUR;
+    const resetTokenExpires = Date.now() + ONE_HOUR; // תקף לשעה
+
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = resetTokenExpires;
+    user.lastResetRequest = NOW;
+    user.dailyResetRequestsCount = (user.dailyResetRequestsCount || 0) + 1;
+
+    await user.save();
+    console.log(`Token saved for user with ID: ${user._id}`);
 
     const transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
@@ -57,32 +68,24 @@ export async function POST(request) {
 
     const resetUrl = `${process.env.NEXTAUTH_URL}/library/auth/reset-password/${resetToken}`;
 
-    const message = {
+    await transporter.sendMail({
         from: `"Otzaria Support" <${process.env.SMTP_FROM}>`,
         to: user.email,
         subject: 'איפוס סיסמה - ספריית אוצריא',
         html: `
             <div dir="rtl" style="font-family: Arial, sans-serif; padding: 20px;">
                 <h2>בקשה לאיפוס סיסמה</h2>
-                <p>קיבלנו בקשה לאפס את הסיסמה לחשבון שלך.</p>
-                <p>לחץ על הכפתור למטה כדי ליצור סיסמה חדשה:</p>
-                <a href="${resetUrl}" style="background-color: #d4a373; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 10px 0;">איפוס סיסמה</a>
+                <p>לחץ על הקישור הבא כדי לבחור סיסמה חדשה:</p>
+                <a href="${resetUrl}" style="background-color: #d4a373; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 15px 0;">אפס סיסמה כעת</a>
                 <p>הקישור תקף לשעה אחת בלבד.</p>
-                <p>אם לא ביקשת זאת, אתה יכול להתעלם מהודעה זו.</p>
             </div>
         `
-    };
+    });
 
-    await transporter.sendMail(message);
+    return NextResponse.json({ success: true, message: 'אם המייל קיים במערכת, נשלחה הודעה.' });
 
-    user.lastResetRequest = NOW;
-    user.dailyResetRequestsCount += 1;
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = resetTokenExpires;
-    
-    await user.save();
   } catch (error) {
-    console.error('Error in forgot-password route:', error);
-    return NextResponse.json({ success: false, message: 'אירעה שגיאה בשרת. אנא נסה שוב מאוחר יותר.' }, { status: 500 });
+    console.error('Forgot Password Error:', error);
+    return NextResponse.json({ error: 'שגיאה בשרת' }, { status: 500 });
   }
 }

@@ -70,6 +70,29 @@ export default function AdminBooksPage() {
     }
   };
 
+  const handleDeleteSubscriber = async (email) => {
+    if (!confirm('האם אתה בטוח שברצונך להסיר מנוי זה מהרשימה?')) return;
+
+    try {
+        const response = await fetch('/api/admin/mailing-list/delete', { 
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            setSubscribersList(prev => prev.filter(s => s.email !== email));
+        } else {
+            alert(result.error || 'שגיאה במחיקת המנוי');
+        }
+    } catch (error) {
+        console.error('Error deleting subscriber:', error);
+        alert('שגיאה בתקשורת');
+    }
+  };
+
   const handleDeleteBook = async (bookId) => {
     if (!confirm('האם אתה בטוח שברצונך למחוק את הספר? כל העמודים והמידע יימחקו לצמיתות!')) return
 
@@ -774,13 +797,23 @@ export default function AdminBooksPage() {
                         ) : (
                             <ul className="space-y-2">
                                 {subscribersList.map((subscriber, index) => (
-                                    <li key={subscriber.email} className="flex items-center justify-between gap-3 p-3 bg-white border border-gray-100 rounded-lg hover:border-teal-200 hover:shadow-sm transition-all">
-                                        <div className="flex items-center gap-3 overflow-hidden">
+                                    <li key={subscriber.email} className="flex items-center justify-between gap-3 p-3 bg-white border border-gray-100 rounded-lg hover:border-teal-200 hover:shadow-sm transition-all group">
+                                        <div className="flex items-center gap-3 overflow-hidden flex-1">
                                             <span className="text-gray-400 text-xs w-6">{index + 1}.</span>
                                             <span className="material-symbols-outlined text-gray-400 text-sm">mail</span>
                                             <span className="text-gray-700 font-mono text-sm truncate select-all" title={subscriber.email}>{subscriber.email}</span>
                                         </div>
-                                        <span className="text-gray-600 text-sm truncate">{subscriber.name}</span>
+            
+                                        <div className="flex items-center gap-3">
+                                            <span className="text-gray-600 text-sm truncate">{subscriber.name}</span>
+                                            <button 
+                                                onClick={() => handleDeleteSubscriber(subscriber.email)}
+                                                className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                                title="מחק מנוי"
+                >
+                                                <span className="material-symbols-outlined text-lg">delete</span>
+                                            </button>
+                                        </div>
                                     </li>
                                 ))}
                             </ul>

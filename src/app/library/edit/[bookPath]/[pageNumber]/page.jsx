@@ -41,6 +41,7 @@ export default function EditPage() {
    
   // Layout State
   const [imageZoom, setImageZoom] = useState(100)
+  const [rotation, setRotation] = useState(0)
   const [layoutOrientation, setLayoutOrientation] = useState('vertical')
   const [imagePanelWidth, setImagePanelWidth] = useState(50)
   const [isResizing, setIsResizing] = useState(false)
@@ -118,7 +119,6 @@ export default function EditPage() {
     if (savedSwap) setSwapPanels(savedSwap === 'true')
 
     if (status === 'authenticated') {
-        // טעינת חיפושים שמורים
         fetch('/api/user/saved-searches')
             .then(res => res.json())
             .then(data => {
@@ -226,21 +226,15 @@ export default function EditPage() {
     }
   }
 
-  // --- Server Persistence Logic ---
-
   const saveSearchesToServer = async (updatedList) => {
-
       setSavedSearches(updatedList); 
-      
       try {
           const res = await fetch('/api/user/saved-searches', {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ savedSearches: updatedList })
           });
-          
           if (!res.ok) throw new Error('Failed to save');
-          
       } catch (err) {
           console.error('Failed to save searches to server', err);
           alert('שגיאה בשמירת הנתונים בשרת. הנתונים נשמרו מקומית בלבד עד לריענון.');
@@ -360,18 +354,18 @@ export default function EditPage() {
     }
   };
 
-  const handleAutoSaveWrapper = (newContent, left = leftColumn, right = rightColumn, two = twoColumns) => {
+  const handleAutoSaveWrapper = useCallback((newContent, left = leftColumn, right = rightColumn, two = twoColumns) => {
     debouncedSave({
       bookPath, pageNumber, content: newContent, leftColumn: left, rightColumn: right,
       twoColumns: two, isContentSplit, rightColumnName, leftColumnName
     })
-  }
+  }, [debouncedSave, bookPath, pageNumber, leftColumn, rightColumn, twoColumns, isContentSplit, rightColumnName, leftColumnName]);
 
-  const handleFinishClick = () => {
+  const handleFinishClick = useCallback(() => {
     if (!session) return alert('שגיאה: אינך מחובר');
     handleAutoSaveWrapper(content, leftColumn, rightColumn, twoColumns);
     setShowUploadDialog(true);
-  }
+  }, [session, content, leftColumn, rightColumn, twoColumns, handleAutoSaveWrapper]);
 
   const completePageLogic = async () => {
     try {
@@ -424,7 +418,7 @@ export default function EditPage() {
     }
   };
 
-  const handleColumnChange = (column, newText) => {
+  const handleColumnChange = useCallback((column, newText) => {
     if (column === 'left') {
       setLeftColumn(newText)
       handleAutoSaveWrapper(content, newText, rightColumn, twoColumns)
@@ -432,7 +426,7 @@ export default function EditPage() {
       setRightColumn(newText)
       handleAutoSaveWrapper(content, leftColumn, newText, twoColumns)
     }
-  }
+  }, [content, leftColumn, rightColumn, twoColumns, handleAutoSaveWrapper]);
 
   const handleResizeStart = (e) => {
     e.preventDefault()
@@ -572,7 +566,7 @@ export default function EditPage() {
     else alert('לא נמצאו תוצאות התואמות לחיפוש.');
   };
 
-  const insertTag = (tag) => {
+  const insertTag = useCallback((tag) => {
     let activeEl = document.activeElement;
     if (!activeEl || activeEl.tagName !== 'TEXTAREA') {
         if (activeTextarea === 'left') activeEl = document.querySelector('textarea[data-column="left"]');
@@ -583,29 +577,81 @@ export default function EditPage() {
     
     const start = activeEl.selectionStart;
     const end = activeEl.selectionEnd;
-    const text = activeEl.value;
-    const before = text.substring(0, start);
-    const selected = text.substring(start, end);
-    const after = text.substring(end);
+    const selected = activeEl.value.substring(start, end);
     
     let insertion = `<${tag}>${selected}</${tag}>`
     if (['h1', 'h2', 'h3'].includes(tag)) insertion = `\n<${tag}>${selected}</${tag}>\n`
     
-    const newText = before + insertion + after;
-    const col = activeEl.getAttribute('data-column');
-    if (col === 'right') handleColumnChange('right', newText);
-    else if (col === 'left') handleColumnChange('left', newText);
-    else {
-        setContent(newText);
-        handleAutoSaveWrapper(newText);
-    }
+    activeEl.focus();
+    const success = document.execCommand('insertText', false, insertion);
     
-    setTimeout(() => {
-        activeEl.focus();
+    if (!success) {
+      const text = activeEl.value;
+      const before = text.substring(0, start);
+      const after = text.substring(end);
+      const newText = before + insertion + after;
+      
+      const col = activeEl.getAttribute('data-column');
+      if (col === 'right') handleColumnChange('right', newText);
+      else if (col === 'left') handleColumnChange('left', newText);
+      else {
+          setContent(newText);
+          handleAutoSaveWrapper(newText);
+      }
+      
+      setTimeout(() => {
         const newCursorPos = start + insertion.length;
         activeEl.setSelectionRange(newCursorPos, newCursorPos);
-    }, 0);
-  }
+      }, 0);
+    }
+  }, [activeTextarea, handleColumnChange, handleAutoSaveWrapper]);
+
+  const handlersRef = useRef({ insertTag, handleFinishClick });
+
+  useEffect(() => {
+    handlersRef.current = { insertTag, handleFinishClick };
+  }, [insertTag, handleFinishClick]);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const isModKey = e.ctrlKey || e.metaKey;
+      if (!isModKey) return;
+
+      const { insertTag: currentInsertTag, handleFinishClick: currentHandleFinish } = handlersRef.current;
+
+      switch (e.code) {
+        case 'KeyB':
+          e.preventDefault();
+          currentInsertTag('b');
+          break;
+        case 'KeyI':
+          e.preventDefault();
+          currentInsertTag('i');
+          break;
+        case 'KeyU':
+          e.preventDefault();
+          currentInsertTag('u');
+          break;
+        case 'Equal':
+        case 'NumpadAdd':
+          e.preventDefault();
+          currentInsertTag('big');
+          break;
+        case 'Minus':
+        case 'NumpadSubtract':
+          e.preventDefault();
+          currentInsertTag('small');
+          break;
+        case 'KeyS':
+          e.preventDefault();
+          currentHandleFinish();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleOCR = async () => {
     if (!selectionRect) return alert('בחר אזור')
@@ -751,6 +797,7 @@ export default function EditPage() {
               setSelectionRect={setSelectionRect}
               layoutOrientation={layoutOrientation} imagePanelWidth={imagePanelWidth}
               isResizing={isResizing} handleResizeStart={handleResizeStart}
+              rotation={rotation} setRotation={setRotation}
             />
             <TextEditor 
               ref={textEditorContainerRef}
@@ -880,5 +927,3 @@ function UploadDialog({ pageNumber, onConfirm, onCancel }) {
     </div>
   )
 }
-
-

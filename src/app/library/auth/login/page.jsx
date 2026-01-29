@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const passwordRef = useRef(null)
 
   const [formData, setFormData] = useState({
@@ -17,10 +18,22 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    const errorType = searchParams.get('error')
+    
+    if (errorType === 'InvalidToken') {
+      setError('קישור האימות אינו תקין או שכבר נעשה בו שימוש.')
+    } else if (errorType === 'TokenExpired') {
+      setError('קישור האימות פג תוקף. אנא בקש קישור אימות חדש.')
+    } else if (errorType === 'ServerError') {
+      setError('אירעה שגיאה בתקשורת מול השרת, אנא התחבר מחדש.')
+    }
+  }, [searchParams])
+
   const handleUsernameKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault()
-      e.preventDefault()
+      passwordRef.current?.focus()
     }
   }
 
@@ -37,7 +50,7 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        setError(result.error)
+        setError('שם משתמש או סיסמה שגויים')
       } else {
         router.refresh()
         router.push('/library/dashboard')
@@ -70,7 +83,7 @@ export default function LoginPage() {
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
               <span className="material-symbols-outlined">error</span>
-              <span>{error}</span>
+              <span className="text-sm font-medium">{error}</span>
             </div>
           )}
 

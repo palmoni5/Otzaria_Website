@@ -14,16 +14,31 @@ export async function GET() {
     await connectDB();
     const userId = session.user.id || session.user._id;
 
-    // 1. שליפת המשתמש
     const user = await User.findById(userId).select('points');
     
     if (!user) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // 2. סטטיסטיקות
     const stats = await Page.aggregate([
       { $match: { claimedBy: user._id } },
+      {
+        $lookup: {
+          from: 'books',
+          localField: 'book',
+          foreignField: '_id',
+          as: 'bookData'
+        }
+      },
+      { $unwind: '$bookData' },
+      {
+        $match: {
+          $or: [
+            { 'bookData.isHidden': { $ne: true } }, 
+            { status: 'completed' } 
+          ]
+        }
+      },
       {
         $group: {
           _id: null,
@@ -36,22 +51,43 @@ export async function GET() {
 
     const userStats = stats[0] || { totalMyPages: 0, completed: 0, inProgress: 0 };
 
-    // 3. פעילות אחרונה
-    const recentActivityRaw = await Page.find({ claimedBy: user._id })
-      .sort({ status: -1, updatedAt: -1 }) 
-      .limit(10)
-      .populate('book', 'name slug')
-      .lean();
+    const recentActivityRaw = await Page.aggregate([
+      { $match: { claimedBy: user._id } },
 
-    // מיפוי הנתונים
+      { $sort: { status: -1, updatedAt: -1 } },
+
+      {
+        $lookup: {
+          from: 'books',
+          localField: 'book',
+          foreignField: '_id',
+          as: 'bookData'
+        }
+      },
+      
+      { $unwind: '$bookData' },
+
+      { $match: { 'bookData.isHidden': { $ne: true } } },
+
+      { $limit: 10 },
+
+      {
+        $project: {
+          _id: 1,
+          pageNumber: 1,
+          status: 1,
+          updatedAt: 1,
+          'bookData.name': 1,
+          'bookData.slug': 1
+        }
+      }
+    ]);
+
     const recentActivity = recentActivityRaw.map(page => {
-      const bookName = page.book?.name || 'ספר לא ידוע';
-      const bookPath = page.book?.slug || '#';
-
       return {
         id: page._id.toString(),
-        bookName: bookName,
-        bookPath: bookPath,
+        bookName: page.bookData.name,
+        bookPath: page.bookData.slug || '#',
         pageNumber: page.pageNumber,
         status: page.status,
         date: page.updatedAt ? new Date(page.updatedAt).toLocaleDateString('he-IL') : '-'

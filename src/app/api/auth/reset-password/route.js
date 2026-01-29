@@ -3,6 +3,34 @@ import connectDB from '@/lib/db';
 import User from '@/models/User';
 import bcrypt from 'bcryptjs';
 
+export async function GET(request) {
+    try {
+        const { searchParams } = new URL(request.url);
+        const token = searchParams.get('token');
+
+        if (!token) {
+            return NextResponse.json({ valid: false, message: 'חסר טוקן' }, { status: 400 });
+        }
+
+        await connectDB();
+
+        const user = await User.findOne({
+            resetPasswordToken: token,
+            resetPasswordExpires: { $gt: Date.now() }
+        });
+
+        if (!user) {
+            return NextResponse.json({ valid: false, message: 'קישור לא תקין או שפג תוקפו' }, { status: 400 });
+        }
+
+        return NextResponse.json({ valid: true });
+
+    } catch (error) {
+        console.error('Check Token Error:', error);
+        return NextResponse.json({ valid: false, message: 'שגיאת שרת' }, { status: 500 });
+    }
+}
+
 export async function POST(request) {
   try {
     const { token, password } = await request.json();

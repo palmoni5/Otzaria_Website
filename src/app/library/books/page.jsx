@@ -91,7 +91,7 @@ export default function LibraryBooksPage() {
                         הספרייה
                       </h1>
                       <p className="text-on-surface/60 text-lg">
-                        {flatBooks.length} ספרים זמינים לעריכה ולימוד
+                        {flatBooks.length} ספרים זמינים לעריכה
                       </p>
                     </div>
                     
