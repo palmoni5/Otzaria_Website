@@ -3,7 +3,7 @@
  */
 
 export const LIBRARY_NAV_LINKS = [
-  { href: '/library', label: 'בית', icon: 'home' },
+  { href: '/', label: 'בית', icon: 'home' },
   { href: '/library/books', label: 'ספרייה', icon: 'library_books' },
   { href: '/library/users', label: 'משתמשים', icon: 'people' },
   { href: '/library/upload', label: 'הוספת ספר', icon: 'upload' }

@@ -40,7 +40,7 @@ export async function POST(request) {
 
         const sendResults = await Promise.allSettled(recipientsArray.map(async (email) => {
             const secureToken = encryptToken(email);
-            const unsubUrl = `${process.env.NEXTAUTH_URL}/api/user/unsubscribe?t=${secureToken}`;
+            const unsubUrl = `${process.env.NEXTAUTH_URL}/api/user/unsubscribe?t=${secureToken}&action=reminder`;
 
             const individualHtml = (html || text) + `
                 <div dir="rtl" style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; font-size: 11px; color: #999; text-align: center; font-family: sans-serif;">

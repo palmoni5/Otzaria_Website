@@ -37,6 +37,7 @@ function decryptToken(token) {
 export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('t');
+    const action = searchParams.get('action');
 
     if (!token) return new NextResponse("Missing token", { status: 400 });
 
@@ -44,14 +45,14 @@ export async function GET(request) {
     if (!email) return new NextResponse("Invalid or expired token", { status: 403 });
 
     await connectDB();
-    
-    // הסרה מרשימת תפוצה
-    const MailingList = mongoose.models.MailingList || mongoose.model('MailingList', new mongoose.Schema({ listName: String, emails: [String] }));
-    await MailingList.updateOne({ listName: 'new_books_subscribers' }, { $pull: { emails: email } });
-
+    if (action === 'new_books') {
+        // הסרה מרשימת תפוצה
+        const MailingList = mongoose.models.MailingList || mongoose.model('MailingList', new mongoose.Schema({ listName: String, emails: [String] }));
+        await MailingList.updateOne({ listName: 'new_books_subscribers' }, { $pull: { emails: email } });
+    } else if (action === 'reminder') {
     // עדכון המשתמש
     await User.updateOne({ email }, { $set: { acceptReminders: false } });
-
+    }
     return new NextResponse(`
         <div dir="rtl" style="font-family: system-ui; text-align: center; padding: 100px 20px;">
             <div style="max-width: 500px; margin: 0 auto; border: 1px solid #ddd; padding: 40px; border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
@@ -68,13 +69,17 @@ export async function GET(request) {
 export async function POST(request) {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get('t');
+    const action = searchParams.get('action');
     const email = decryptToken(token);
     
     if (email) {
         await connectDB();
+        if (action === 'new_books') {
         const MailingList = mongoose.models.MailingList || mongoose.model('MailingList', new mongoose.Schema({ listName: String, emails: [String] }));
         await MailingList.updateOne({ listName: 'new_books_subscribers' }, { $pull: { emails: email } });
+        } else if (action === 'reminder') {
         await User.updateOne({ email }, { $set: { acceptReminders: false } });
+        }
         return NextResponse.json({ success: true });
     }
     return NextResponse.json({ error: 'invalid' }, { status: 400 });
