@@ -102,7 +102,7 @@ export default function ResetPasswordPage() {
                   </div>
                   <h2 className="text-xl font-bold text-gray-900 mb-2">קישור לא תקין</h2>
                   <p className="text-gray-600 mb-6">
-                      הקישור לאיפוס הסיסמה פג תוקף או שאינו תקין.
+                      {tokenError || 'הקישור לאיפוס הסיסמה פג תוקף או שאינו תקין.'}
                       <br/>
                       אנא נסה לבקש איפוס סיסמה מחדש.
                   </p>
