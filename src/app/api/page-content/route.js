@@ -62,13 +62,7 @@ export async function POST(request) {
     };
 
     // 1. אם הדף פנוי - המשתמש "תופס" אותו אוטומטית מעצם השמירה
-    if (currentPage.status === 'available') {
-        updateFields.status = 'in-progress';
-        updateFields.claimedBy = userId;
-        updateFields.claimedAt = new Date();
-    } 
-    // 2. אם הדף תפוס או הושלם - מוודאים שהמשתמש הוא הבעלים או מנהל
-    else {
+    if (currentPage.status !== 'available') {
         const isOwner = currentPage.claimedBy?.toString() === userId;
         if (!isOwner && !isAdmin) {
             return NextResponse.json({ success: false, error: 'אין לך הרשאה לערוך דף זה' }, { status: 403 });
