@@ -36,12 +36,23 @@ export default function AdminUsersPage() {
       setEditingUser(user._id)
       setFormData({
           name: user.name,
+          email: user.email, // <--- הוספנו את האימייל לנתוני הטופס
           role: user.role,
           points: user.points
       })
   }
 
   const handleUpdateUser = async () => {
+    const originalUser = users.find(u => u._id === editingUser)
+    
+    if (originalUser && formData.email !== originalUser.email) {
+        const confirmed = confirm(
+            "⚠️ שים לב: שינוי כתובת האימייל יגרום לביטול אימות המשתמש (V) והוא יידרש לאמת את המייל החדש.\n\nהאם אתה בטוח שברצונך להמשיך?"
+        )
+        // אם המנהל לחץ על "ביטול", עוצרים את הפונקציה כאן
+        if (!confirmed) return 
+    }
+
     try {
       const response = await fetch('/api/admin/users', {
         method: 'PUT',
@@ -87,7 +98,6 @@ export default function AdminUsersPage() {
   const sortedUsers = [...users].sort((a, b) => {
     if (!sortConfig.key) return 0
     
-    // שליפת הערכים, עם ברירת מחדל למניעת שגיאות
     let aValue = a[sortConfig.key] || ''
     let bValue = b[sortConfig.key] || ''
     
@@ -153,7 +163,6 @@ export default function AdminUsersPage() {
             </tr>
           </thead>
           <tbody>
-            {/* --- שינוי 5: שימוש ב-sortedUsers במקום ב-users --- */}
             {sortedUsers.map(user => {
               const isEditing = editingUser === user._id
               return (
@@ -167,7 +176,20 @@ export default function AdminUsersPage() {
                       />
                     ) : user.name}
                   </td>
-                  <td className="p-4 text-sm text-gray-600 font-mono">{user.email}</td>
+                  
+                  {/* --- שינוי: הפיכת עמודת האימייל לניתנת לעריכה --- */}
+                  <td className="p-4 text-sm text-gray-600 font-mono">
+                    {isEditing ? (
+                        <input
+                            type="email"
+                            dir="ltr" // חשוב כדי שהמייל יוצג נכון
+                            className="border rounded px-2 py-1 w-full font-mono text-sm"
+                            value={formData.email}
+                            onChange={e => setFormData({ ...formData, email: e.target.value })}
+                        />
+                    ) : user.email}
+                  </td>
+
                   <td className="p-4">
                     {isEditing ? (
                       <select
