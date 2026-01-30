@@ -25,6 +25,7 @@ export async function sendBookNotification(bookName, bookSlug) {
                 <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden;">
                     <div style="background-color: #ffffff; padding: 20px; border-bottom: 3px solid #d4a373;">
                         <img src="https://www.otzaria.org/logo.png" alt="Otzaria Logo" style="width: 120px; height: auto;">
+                        <h2 style="color: #d4a373; font-size: 20px; margin: 5px 0 0 0; font-weight: bold;">ספריית אוצריא</h2>
                     </div>
                     <div style="padding: 30px; color: #333333;">
                         <h1 style="color: #2c3e50; font-size: 24px; margin-bottom: 10px;">ספר חדש עלה לספריה!</h1>
