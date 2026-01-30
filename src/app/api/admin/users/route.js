@@ -92,14 +92,22 @@ export async function PUT(request) {
             }
         }
 
+        const updateData = {
+            role,
+            points,
+            name,
+        };
+
+        if (email) {
+            updateData.email = email;
+            updateData.isVerified = false;
+            updateData.verificationToken = null;
+            updateData.verificationTokenExpiry = null;
+        }
+
         const updatedUser = await User.findByIdAndUpdate(
             userId, 
-            { 
-                role, 
-                points, 
-                name,
-                ...(email && { email }) 
-            },
+            updateData,
             { new: true }
         ).select('-password');
 
