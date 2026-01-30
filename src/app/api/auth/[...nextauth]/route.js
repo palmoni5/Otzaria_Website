@@ -56,6 +56,7 @@ export const authOptions = {
             await connectDB();
             const freshUser = await User.findById(token.id);
             if (freshUser) {
+                token.email = freshUser.email;
                 token.isVerified = freshUser.isVerified;
                 token.acceptReminders = freshUser.acceptReminders;
                 token.role = freshUser.role;
@@ -71,6 +72,7 @@ export const authOptions = {
       if (token) {
         session.user.id = token.id;
         session.user._id = token.id;
+        session.user.email = token.email;
         session.user.role = token.role;
         session.user.name = token.name;
         session.user.acceptReminders = token.acceptReminders;

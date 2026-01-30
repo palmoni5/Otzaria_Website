@@ -813,6 +813,8 @@ export default function EditPage() {
               layoutOrientation={layoutOrientation} imagePanelWidth={imagePanelWidth}
               isResizing={isResizing} handleResizeStart={handleResizeStart}
               rotation={rotation} setRotation={setRotation}
+              handleOCRSelection={handleOCR}
+              isOcrProcessing={isOcrProcessing}
             />
             <TextEditor 
               ref={textEditorContainerRef}
