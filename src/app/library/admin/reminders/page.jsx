@@ -170,6 +170,7 @@ export default function BookReminderPage() {
             <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden;">
                 <div style="background-color: #ffffff; padding: 20px; border-bottom: 3px solid #d4a373;">
                     <img src="https://www.otzaria.org/logo.png" alt="Otzaria Logo" style="width: 120px; height: auto;">
+                    <h2 style="color: #d4a373; margin: 5px 0 0 0; font-size: 20px; font-weight: bold;">ספריית אוצריא</h2>
                 </div>
                 <div style="padding: 30px; color: #333333;">
                     <h1 style="color: #2c3e50; font-size: 24px; margin-bottom: 10px;">הודעה בנוגע לספר: ${bookName}</h1>
@@ -177,14 +178,10 @@ export default function BookReminderPage() {
                         ${formattedBody}
                     </div>
                     <div style="margin: 30px 0; text-align: center;">
-                        <a href="${siteUrl}/library/books" style="background-color: #d4a373; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
+                        <a href="${siteUrl}/library/book/${bookName}" style="background-color: #d4a373; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
                             כנס לספרייה
                         </a>
                     </div>
-                </div>
-                <div style="background-color: #f0f0f0; padding: 15px; font-size: 12px; color: #888888;">
-                    הודעה זו נשלחה אליך ממערכת ספריית אוצריא.<br>
-                    תודה על תרומתך!
                 </div>
             </div>
         </div>
