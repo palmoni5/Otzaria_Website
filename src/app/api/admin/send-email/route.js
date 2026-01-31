@@ -14,7 +14,8 @@ export async function POST(request) {
         }
 
         const body = await request.json();
-        const { to, subject, text, html, bcc, cc, bookName, bookPath } = body;
+        // הוספתי כאן את isPartial
+        const { to, subject, text, html, bcc, cc, bookName, bookPath, isPartial } = body;
 
         if ((!to && !bcc) || !subject) {
             return NextResponse.json({ error: 'Missing recipients or subject' }, { status: 400 });
@@ -77,6 +78,7 @@ export async function POST(request) {
                     bookName: bookName,
                     bookPath: bookPath || '',
                     recipientCount: successful,
+                    isPartial: isPartial || false,
                     timestamp: new Date()
                 });
                 console.log('History saved successfully');

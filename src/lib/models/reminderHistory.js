@@ -20,6 +20,10 @@ const ReminderHistorySchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  isPartial: {
+    type: Boolean,
+    default: false
+  },
   timestamp: {
     type: Date,
     default: Date.now
