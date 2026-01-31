@@ -8,8 +8,10 @@ import Header from '@/components/Header'
 import ChangePasswordForm from '@/components/ChangePasswordForm'
 
 export default function DashboardPage() {
-  const { data: session, status } = useSession()
+  const { data: session, status, update } = useSession()
   const router = useRouter()
+  
+  // Stats State
   const [stats, setStats] = useState({
     myPages: 0,
     completedPages: 0,
@@ -18,20 +20,34 @@ export default function DashboardPage() {
     recentActivity: []
   })
   const [loading, setLoading] = useState(true)
+
+  // Message Form State
   const [showMessageForm, setShowMessageForm] = useState(false)
   const [messageSubject, setMessageSubject] = useState('')
   const [messageText, setMessageText] = useState('')
   const [sendingMessage, setSendingMessage] = useState(false)
+
+  // My Messages State
   const [myMessages, setMyMessages] = useState([])
   const [showMyMessages, setShowMyMessages] = useState(false)
   const [replyingToMessageId, setReplyingToMessageId] = useState(null)
   const [replyText, setReplyText] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
+
+  // Notices
   const [notice, setNotice] = useState(null)
   const noticeTimeoutRef = useRef(null)
+
+  // Notifications Subscription State
   const [showNotifModal, setShowNotifModal] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
   const [loadingSub, setLoadingSub] = useState(false)
+
+  // --- Email Update State ---
+  const [showEmailModal, setShowEmailModal] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [updatingEmail, setUpdatingEmail] = useState(false)
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -39,8 +55,9 @@ export default function DashboardPage() {
     } else if (status === 'authenticated') {
       loadUserStats()
       loadMyMessages()
+      setNewEmail(session?.user?.email || '')
     }
-  }, [status, router])
+  }, [status, router, session])
 
   const loadUserStats = async () => {
     try {
@@ -152,6 +169,41 @@ export default function DashboardPage() {
     }
   }, [])
 
+  const handleUpdateEmail = async () => {
+    if (!newEmail || !newEmail.includes('@')) {
+        showNoticeWithTimeout('error', 'נא להזין כתובת מייל תקינה');
+        return;
+    }
+    
+    if (newEmail === session?.user?.email) {
+        setShowEmailModal(false);
+        return;
+    }
+
+    setUpdatingEmail(true);
+
+    try {
+        const res = await fetch('/api/auth/update-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: newEmail })
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+            await update();
+            showNoticeWithTimeout('success', 'כתובת המייל עודכנה בהצלחה!');
+            setShowEmailModal(false);
+        } else {
+            showNoticeWithTimeout('error', data.error || 'שגיאה בעדכון המייל');
+        }
+    } catch (error) {
+        showNoticeWithTimeout('error', 'שגיאת תקשורת');
+    } finally {
+        setUpdatingEmail(false);
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!messageSubject.trim() || !messageText.trim()) {
       showNoticeWithTimeout('error', 'נא למלא את כל השדות')
@@ -166,7 +218,7 @@ export default function DashboardPage() {
         body: JSON.stringify({
           subject: messageSubject,
           content: messageText,
-          recipientId: null // null מסמן הודעה למנהלים
+          recipientId: null 
         })
       })
 
@@ -219,20 +271,17 @@ export default function DashboardPage() {
     }
   }
 
-  // --- Helper function to check if specific user read the message ---
   const isReadByUser = (message) => {
     const userId = session?.user?._id || session?.user?.id;
-    
     if (message.readBy && Array.isArray(message.readBy)) {
         return message.readBy.includes(userId);
     }
-    
     return message.isRead;
   };
 
   const markMessagesAsRead = async (messages) => {
       const unreadMessagesIds = messages
-          .filter(m => !isReadByUser(m)) // סינון לפי המשתמש הספציפי
+          .filter(m => !isReadByUser(m))
           .map(m => m.id);
 
       if (unreadMessagesIds.length === 0) return;
@@ -243,8 +292,6 @@ export default function DashboardPage() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ messageIds: unreadMessagesIds })
           });
-        
-        
       } catch (error) {
           console.error('Failed to mark messages as read:', error);
       }
@@ -419,6 +466,17 @@ export default function DashboardPage() {
                 <span className="font-medium text-on-surface">התראות על ספרים חדשים</span>
               </button>
 
+              <button 
+                onClick={() => {
+                    setNewEmail(session?.user?.email || '');
+                    setShowEmailModal(true);
+                }}
+                className="flex flex-col items-center gap-3 p-6 bg-primary-container rounded-xl hover:bg-primary/20 transition-all"
+              >
+                <span className="material-symbols-outlined text-4xl text-primary">manage_accounts</span>
+                <span className="font-medium text-on-surface">עדכון כתובת מייל</span>
+              </button>
+
               {isAdmin && (
                 <Link href="/library/admin" className="flex flex-col items-center gap-3 p-6 bg-accent/20 rounded-xl hover:bg-accent/30 transition-all">
                   <span className="material-symbols-outlined text-4xl text-accent">admin_panel_settings</span>
@@ -493,7 +551,120 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* My Messages Modal - UPDATED STRUCTURE */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="flex flex-col bg-white glass-strong rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="p-6 border-b border-surface-variant bg-white/50 rounded-t-2xl flex justify-between items-center">
+              <h3 className="text-xl font-bold text-on-surface flex items-center gap-3">
+                <span className="material-symbols-outlined text-2xl text-primary">manage_accounts</span>
+                עדכון כתובת מייל
+              </h3>
+              <button 
+                onClick={() => setShowEmailModal(false)} 
+                className="text-gray-500 hover:text-gray-800"
+                disabled={updatingEmail}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+               <div>
+                  <label className="block text-sm font-medium text-on-surface mb-2">כתובת מייל נוכחית</label>
+                  <div className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-lg text-gray-600">
+                    {session?.user?.email}
+                  </div>
+               </div>
+
+               <div>
+                  <label className="block text-sm font-medium text-on-surface mb-2">כתובת מייל חדשה</label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder="הכנס מייל חדש..."
+                    className="w-full px-4 py-3 border border-surface-variant rounded-lg focus:outline-none focus:border-primary bg-white text-on-surface shadow-sm"
+                    disabled={updatingEmail}
+                    dir="ltr"
+                  />
+               </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                    onClick={() => setShowEmailModal(false)}
+                    disabled={updatingEmail}
+                    className="flex-1 px-4 py-2 border border-surface-variant text-on-surface rounded-lg hover:bg-surface-variant transition-colors"
+                >
+                    ביטול
+                </button>
+                <button
+                    onClick={() => {
+                        if (!newEmail || !newEmail.includes('@')) {
+                            showNoticeWithTimeout('error', 'נא להזין כתובת מייל תקינה');
+                            return;
+                        }
+                        if (newEmail === session?.user?.email) {
+                            setShowEmailModal(false);
+                            return;
+                        }
+                        setShowEmailConfirmation(true);
+                    }}
+                    disabled={updatingEmail || !newEmail || newEmail === session?.user?.email}
+                    className="flex-[2] px-4 py-2 bg-primary text-on-primary rounded-lg hover:bg-accent transition-colors flex items-center justify-center gap-2 font-bold shadow-md"
+                >
+                    {updatingEmail ? (
+                    <>
+                        <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                        <span>מעדכן...</span>
+                    </>
+                    ) : (
+                        'עדכן מייל'
+                    )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showEmailConfirmation && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+            <div className="flex flex-col bg-white glass-strong rounded-2xl w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 border border-yellow-100">
+                <div className="p-6 text-center space-y-4">
+                    <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center">
+                        <span className="material-symbols-outlined text-4xl text-yellow-600">
+                            warning
+                        </span>
+                    </div>
+                    <h3 className="text-xl font-bold text-on-surface">
+                        האם אתה בטוח?
+                    </h3>
+                    <p className="text-on-surface/80 text-sm leading-relaxed">
+                        שינוי כתובת המייל ידרוש ביצוע <strong>אימות מחדש</strong> לכתובת החדשה כדי להמשיך להשתמש בחשבון.
+                    </p>
+                </div>
+                <div className="flex gap-3 p-6 border-t border-surface-variant bg-gray-50/50 rounded-b-2xl">
+                    <button
+                        onClick={() => setShowEmailConfirmation(false)}
+                        className="flex-1 px-4 py-2 border border-surface-variant text-on-surface rounded-lg hover:bg-surface-variant transition-colors"
+                    >
+                        ביטול
+                    </button>
+                    <button
+                        onClick={() => {
+                            setShowEmailConfirmation(false);
+                            handleUpdateEmail(); // קריאה לפונקציית העדכון האמיתית
+                        }}
+                        className="flex-1 px-4 py-2 bg-primary text-on-primary rounded-lg hover:bg-accent transition-colors font-bold shadow-sm"
+                    >
+                        כן, אני בטוח
+                    </button>
+                </div>
+            </div>
+        </div>
+      )}
+
+      {/* My Messages Modal */}
       {showMyMessages && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
@@ -535,7 +706,7 @@ export default function DashboardPage() {
                         key={message.id} 
                         className={`glass p-6 rounded-lg border transition-colors duration-300 ${
                           isUnread 
-                            ? 'bg-red-50 border-red-200 shadow-sm' // עיצוב להודעות שלא נקראו
+                            ? 'bg-red-50 border-red-200 shadow-sm' 
                             : 'border-surface-variant'
                         }`}
                       >
@@ -652,7 +823,8 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-      {/* --- Notification Modal --- */}
+      
+      {/* Notification Modal */}
       {showNotifModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="flex flex-col bg-white glass-strong rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
@@ -714,7 +886,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Message Modal - UPDATED STRUCTURE */}
+      {/* Message Modal */}
       {showMessageForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="flex flex-col bg-white glass-strong rounded-2xl w-full max-w-2xl shadow-2xl animate-in zoom-in-95 duration-200">

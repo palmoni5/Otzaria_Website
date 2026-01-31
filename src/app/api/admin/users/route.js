@@ -76,12 +76,38 @@ export async function PUT(request) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
 
-        const { userId, role, points, name } = await request.json();
+        const { userId, role, points, name, email } = await request.json();
+        
         await connectDB();
         
+        if (email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+            }
+
+            const existingUser = await User.findOne({ email: email, _id: { $ne: userId } });
+            if (existingUser) {
+                return NextResponse.json({ error: 'Email already in use' }, { status: 409 });
+            }
+        }
+
+        const updateData = {
+            role,
+            points,
+            name,
+        };
+
+        if (email) {
+            updateData.email = email;
+            updateData.isVerified = false;
+            updateData.verificationToken = null;
+            updateData.verificationTokenExpiry = null;
+        }
+
         const updatedUser = await User.findByIdAndUpdate(
             userId, 
-            { role, points, name },
+            updateData,
             { new: true }
         ).select('-password');
 

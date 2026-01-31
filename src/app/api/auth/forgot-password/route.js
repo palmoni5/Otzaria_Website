@@ -75,7 +75,8 @@ export async function POST(request) {
         html: `
             <div dir="rtl" style="font-family: Arial, sans-serif; padding: 20px;">
                 <h2>בקשה לאיפוס סיסמה</h2>
-                <p>לחץ על הקישור הבא כדי לבחור סיסמה חדשה:</p>
+                <p>קיבלנו בקשה לאיפוס הסיסמה לחשבון שלך באתר ספריית אוצריא. אם לא ביקשת את הסיסמה - אל דאגה, החשבון שלכם מאובטח, פשוט אל תלחצו על הקישור.</p>
+                <p>אם ביקשת את האימות, לחץ על הקישור הבא כדי לבחור סיסמה חדשה:</p>
                 <a href="${resetUrl}" style="background-color: #d4a373; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 15px 0;">אפס סיסמה כעת</a>
                 <p>הקישור תקף לשעה אחת בלבד.</p>
             </div>

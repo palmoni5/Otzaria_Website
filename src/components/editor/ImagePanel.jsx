@@ -1,8 +1,10 @@
-import { useRef, useEffect, useState } from 'react'
+import { useRef, useEffect, useState, useCallback } from 'react'
 
 export default function ImagePanel({
   thumbnailUrl,
   pageNumber,
+  handleOCRSelection,
+  isOcrProcessing,
   imageZoom,
   isSelectionMode,
   selectionStart,
@@ -23,32 +25,114 @@ export default function ImagePanel({
   const wrapperRef = useRef(null)
   const imageRef = useRef(null)
   const [isRotating, setIsRotating] = useState(false)
+  
+  const [isCopied, setIsCopied] = useState(false)
 
-  // --- לוגיקת סיבוב ---
+  const [interactionMode, setInteractionMode] = useState(null)
+  const [activeHandle, setActiveHandle] = useState(null)
+  
+  const dragStartRef = useRef({
+    x: 0, y: 0, 
+    rectX: 0, rectY: 0, 
+    rectW: 0, rectH: 0
+  })
+
+  const getSelectionCanvas = useCallback(() => {
+    if (!selectionRect || !imageRef.current) return null
+
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    const img = imageRef.current
+    
+    const scale = img.naturalWidth / img.clientWidth
+    
+    canvas.width = selectionRect.width * scale
+    canvas.height = selectionRect.height * scale
+    
+    ctx.translate(-selectionRect.x * scale, -selectionRect.y * scale)
+    
+    const centerX = img.naturalWidth / 2
+    const centerY = img.naturalHeight / 2
+    
+    ctx.translate(centerX, centerY)
+    ctx.rotate((rotation * Math.PI) / 180)
+    ctx.translate(-centerX, -centerY)
+    
+    ctx.drawImage(img, 0, 0)
+    
+    return canvas
+  }, [selectionRect, rotation])
+
+  const copySelectedArea = useCallback(async () => {
+    const canvas = getSelectionCanvas()
+    if (!canvas) return
+
+    try {
+      canvas.toBlob(async (blob) => {
+        if (!blob) return
+        const item = new ClipboardItem({ "image/png": blob })
+        await navigator.clipboard.write([item])
+        
+        setIsCopied(true)
+        setTimeout(() => setIsCopied(false), 2000)
+      })
+    } catch (err) {
+      console.error('Copy failed', err)
+    }
+  }, [getSelectionCanvas])
+
+  const downloadSelectedArea = useCallback(() => {
+      const canvas = getSelectionCanvas()
+      if (!canvas) return
+
+      try {
+        const dataUrl = canvas.toDataURL('image/png')
+        
+        const link = document.createElement('a')
+        link.href = dataUrl
+        link.download = `crop-page-${pageNumber || 'image'}-${Date.now()}.png`
+        
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+      } catch (err) {
+        console.error('Download failed', err)
+      }
+  }, [getSelectionCanvas, pageNumber])
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.code === 'KeyC' || e.key === 'c')) {
+        if (selectionRect) {
+          e.preventDefault()
+          e.stopPropagation()
+          copySelectedArea()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [selectionRect, copySelectedArea])
+
   useEffect(() => {
     if (!isRotating) return
-
     const handleRotateMove = (e) => {
       if (!wrapperRef.current) return
-      
       const rect = wrapperRef.current.getBoundingClientRect()
       const centerX = rect.left + rect.width / 2
       const centerY = rect.top + rect.height / 2
-      
       const radians = Math.atan2(e.clientY - centerY, e.clientX - centerX)
       const degrees = radians * (180 / Math.PI)
-      
       setRotation(degrees + 90)
     }
-
     const handleRotateUp = () => {
       setIsRotating(false)
       document.body.style.cursor = 'default'
     }
-
     document.addEventListener('mousemove', handleRotateMove)
     document.addEventListener('mouseup', handleRotateUp)
-
     return () => {
       document.removeEventListener('mousemove', handleRotateMove)
       document.removeEventListener('mouseup', handleRotateUp)
@@ -56,117 +140,195 @@ export default function ImagePanel({
   }, [isRotating, setRotation])
 
   const handleRotationStart = (e) => {
+    e.preventDefault(); e.stopPropagation();
+    setIsRotating(true); document.body.style.cursor = 'grabbing';
+  }
+  const rotateLeft = (e) => { e.stopPropagation(); setRotation(prev => Math.round((prev - 0.1) * 10) / 10) }
+  const rotateRight = (e) => { e.stopPropagation(); setRotation(prev => Math.round((prev + 0.1) * 10) / 10) }
+
+  const getWrapperCoordinates = (e) => {
+    if (!wrapperRef.current) return { x: 0, y: 0 }
+    const containerRect = wrapperRef.current.getBoundingClientRect()
+    const scale = imageZoom / 100
+    return {
+      x: (e.clientX - containerRect.left) / scale,
+      y: (e.clientY - containerRect.top) / scale
+    }
+  }
+
+  const handleMouseDownCreate = (e) => {
+    if (isRotating || !isSelectionMode || e.target.closest('.rotation-controls')) return
+    if (e.target.closest('.selection-box') || e.target.tagName === 'BUTTON') return
+
     e.preventDefault()
     e.stopPropagation()
-    setIsRotating(true)
-    document.body.style.cursor = 'grabbing'
-  }
-
-  const rotateLeft = (e) => {
-    e.stopPropagation()
-    setRotation(prev => Math.round((prev - 0.1) * 10) / 10)
-  }
-
-  const rotateRight = (e) => {
-    e.stopPropagation()
-    setRotation(prev => Math.round((prev + 0.1) * 10) / 10)
-  }
-
-  // --- לוגיקת בחירה (Selection) ---
-  const getWrapperCoordinates = (e) => {
-    if (!wrapperRef.current) return { x: 0, y: 0, displayX: 0, displayY: 0 }
     
-    const container = wrapperRef.current
-    const containerRect = container.getBoundingClientRect()
-    
-    const displayX = e.clientX - containerRect.left
-    const displayY = e.clientY - containerRect.top
-    
-    const scale = imageZoom / 100
-    const x = displayX / scale
-    const y = displayY / scale
-    
-    return { x, y, displayX, displayY }
-  }
-
-  const handleMouseDown = (e) => {
-    if (isRotating || !isSelectionMode || e.target.closest('.rotation-controls')) return
-    if (e.target.tagName === 'IMG') e.preventDefault()
-
-    e.stopPropagation()
     const coords = getWrapperCoordinates(e)
     setSelectionStart(coords)
     setSelectionEnd(coords)
-    setSelectionRect(null)
+    setSelectionRect(null) 
+    setInteractionMode('create')
   }
 
-  const handleMouseMove = (e) => {
-    if (isRotating || !isSelectionMode || !selectionStart) return
+  const handleMouseDownMove = (e) => {
+    if (!selectionRect) return
     e.preventDefault()
     e.stopPropagation()
     
     const coords = getWrapperCoordinates(e)
-    setSelectionEnd(coords)
-
-    const scrollContainer = imageContainerRef.current
-    if (!scrollContainer) return
-    const rect = scrollContainer.getBoundingClientRect()
-    const threshold = 50
-    const speed = 15
-    let scrollX = 0, scrollY = 0
-
-    if (e.clientY < rect.top + threshold) scrollY = -speed
-    else if (e.clientY > rect.bottom - threshold) scrollY = speed
-    if (e.clientX < rect.left + threshold) scrollX = -speed
-    else if (e.clientX > rect.right - threshold) scrollX = speed
-
-    if (autoScrollRef.current) clearInterval(autoScrollRef.current)
-    if (scrollX !== 0 || scrollY !== 0) {
-      autoScrollRef.current = setInterval(() => {
-        if (scrollX) scrollContainer.scrollLeft += scrollX
-        if (scrollY) scrollContainer.scrollTop += scrollY
-      }, 16)
+    dragStartRef.current = {
+      x: coords.x,
+      y: coords.y,
+      rectX: selectionRect.x,
+      rectY: selectionRect.y,
+      rectW: selectionRect.width,
+      rectH: selectionRect.height
     }
+    setInteractionMode('move')
+  }
+
+  const handleMouseDownResize = (e, handle) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const coords = getWrapperCoordinates(e)
+    dragStartRef.current = {
+      x: coords.x,
+      y: coords.y,
+      rectX: selectionRect.x,
+      rectY: selectionRect.y,
+      rectW: selectionRect.width,
+      rectH: selectionRect.height
+    }
+    setActiveHandle(handle)
+    setInteractionMode('resize')
+  }
+
+  const handleMouseMove = (e) => {
+    if (!interactionMode) return
+    e.preventDefault()
+    e.stopPropagation()
+    
+    const currentPos = getWrapperCoordinates(e)
+    
+    if (interactionMode === 'create') {
+      setSelectionEnd(currentPos)
+      handleAutoScroll(e) 
+    }
+    
+    else if (interactionMode === 'move') {
+      const deltaX = currentPos.x - dragStartRef.current.x
+      const deltaY = currentPos.y - dragStartRef.current.y
+      
+      setSelectionRect({
+        ...selectionRect,
+        x: dragStartRef.current.rectX + deltaX,
+        y: dragStartRef.current.rectY + deltaY,
+        width: dragStartRef.current.rectW,
+        height: dragStartRef.current.rectH
+      })
+    }
+    
+    else if (interactionMode === 'resize') {
+        const deltaX = currentPos.x - dragStartRef.current.x
+        const deltaY = currentPos.y - dragStartRef.current.y
+        const start = dragStartRef.current
+
+        let newX = start.rectX
+        let newY = start.rectY
+        let newW = start.rectW
+        let newH = start.rectH
+
+        if (activeHandle.includes('w')) {
+            newW = start.rectW - deltaX
+            newX = start.rectX + deltaX
+        }
+        if (activeHandle.includes('e')) { 
+            newW = start.rectW + deltaX
+        }
+        if (activeHandle.includes('n')) { 
+            newH = start.rectH - deltaY
+            newY = start.rectY + deltaY
+        }
+        if (activeHandle.includes('s')) { 
+            newH = start.rectH + deltaY
+        }
+
+        if (newW < 10) { 
+           if (activeHandle.includes('w')) newX = start.rectX + start.rectW - 10; 
+           newW = 10; 
+        }
+        if (newH < 10) {
+           if (activeHandle.includes('n')) newY = start.rectY + start.rectH - 10;
+           newH = 10;
+        }
+
+        setSelectionRect({
+            x: newX, y: newY, width: newW, height: newH
+        })
+    }
+  }
+
+  const handleAutoScroll = (e) => {
+      const scrollContainer = imageContainerRef.current
+      if (!scrollContainer) return
+      const rect = scrollContainer.getBoundingClientRect()
+      const threshold = 50
+      const speed = 15
+      let scrollX = 0, scrollY = 0
+      if (e.clientY < rect.top + threshold) scrollY = -speed
+      else if (e.clientY > rect.bottom - threshold) scrollY = speed
+      if (e.clientX < rect.left + threshold) scrollX = -speed
+      else if (e.clientX > rect.right - threshold) scrollX = speed
+
+      if (autoScrollRef.current) clearInterval(autoScrollRef.current)
+      if (scrollX !== 0 || scrollY !== 0) {
+        autoScrollRef.current = setInterval(() => {
+          if (scrollX) scrollContainer.scrollLeft += scrollX
+          if (scrollY) scrollContainer.scrollTop += scrollY
+        }, 16)
+      }
   }
 
   const handleMouseUp = (e) => {
-    if (autoScrollRef.current) {
-      clearInterval(autoScrollRef.current)
-      autoScrollRef.current = null
-    }
-    if (isRotating || !isSelectionMode || !selectionStart || !selectionEnd) return
-    e.preventDefault()
-    e.stopPropagation()
-
-    const minX = Math.min(selectionStart.x, selectionEnd.x)
-    const maxX = Math.max(selectionStart.x, selectionEnd.x)
-    const minY = Math.min(selectionStart.y, selectionEnd.y)
-    const maxY = Math.max(selectionStart.y, selectionEnd.y)
+    if (autoScrollRef.current) { clearInterval(autoScrollRef.current); autoScrollRef.current = null }
     
-    const width = maxX - minX
-    const height = maxY - minY
+    if (interactionMode === 'create' && selectionStart && selectionEnd) {
+      const minX = Math.min(selectionStart.x, selectionEnd.x)
+      const maxX = Math.max(selectionStart.x, selectionEnd.x)
+      const minY = Math.min(selectionStart.y, selectionEnd.y)
+      const maxY = Math.max(selectionStart.y, selectionEnd.y)
+      
+      const width = maxX - minX
+      const height = maxY - minY
 
-    if (width < 5 || height < 5) {
+      if (width > 5 && height > 5) {
+        setSelectionRect({ x: minX, y: minY, width, height })
+      }
       setSelectionStart(null)
       setSelectionEnd(null)
-      return
     }
-
-    setSelectionRect({
-      x: minX,
-      y: minY,
-      width: width,
-      height: height
-    })
-    setSelectionStart(null)
-    setSelectionEnd(null)
+    
+    setInteractionMode(null)
+    setActiveHandle(null)
   }
+
+  const ResizeHandle = ({ cursor, position, handle }) => (
+    <div
+      onMouseDown={(e) => handleMouseDownResize(e, handle)}
+      className={`absolute w-3 h-3 bg-white border border-blue-600 rounded-full z-20 hover:bg-blue-100 ${position}`}
+      style={{ 
+        cursor: cursor,
+        transform: `scale(${100 / imageZoom})`
+      }}
+    />
+  )
 
   return (
     <>
       <div
         ref={imageContainerRef}
-        className="overflow-auto p-4 bg-gray-50/50 relative block"
+        className="overflow-auto p-4 bg-gray-50/50 relative block select-none"
         style={{
           width: layoutOrientation === 'horizontal' ? '100%' : `${imagePanelWidth}%`,
           height: layoutOrientation === 'horizontal' ? `${imagePanelWidth}%` : 'auto',
@@ -177,21 +339,24 @@ export default function ImagePanel({
         {thumbnailUrl ? (
           <div 
             className="relative mx-auto flex items-center justify-center min-h-full"
-            style={{ 
-              width: 'fit-content',
-              paddingBottom: '40px'
-            }}
+            style={{ width: 'fit-content', paddingBottom: '40px' }}
           >
             <div
               ref={wrapperRef}
-              className="inline-block relative transition-transform duration-75 ease-linear group"
-              onMouseDown={handleMouseDown}
+              className="inline-block relative transition-transform duration-75 ease-linear group select-none"
+              draggable={false}
+              onDragStart={(e) => e.preventDefault()}
+              onMouseDown={handleMouseDownCreate} 
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseUp} 
               style={{ 
                 transform: `scale(${imageZoom / 100})`,
                 cursor: isSelectionMode ? 'crosshair' : 'default',
                 transformOrigin: 'center center',
+                userSelect: 'none',
+                WebkitUserSelect: 'none',
+                touchAction: 'none'
               }}
             >
               
@@ -202,47 +367,35 @@ export default function ImagePanel({
                     position: 'relative'
                 }}
               >
-                  <div 
-                    className="rotation-controls absolute top-2 left-1/2 flex items-center gap-2 z-[100] opacity-0 group-hover:opacity-100 transition-opacity"
-                    style={{ transform: `translateX(-50%) scale(${100 / imageZoom})` }}
-                  >
-                    <button 
-                      className="w-4 h-4 bg-gray-600/90 border border-gray-100 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-700 transition-colors font-bold leading-none pb-0.5 backdrop-blur-sm"
-                      onMouseDown={rotateRight}
-                    ><span>&lt;</span></button>
+                  <div className="rotation-controls absolute top-2 left-1/2 flex items-center gap-2 z-[100] opacity-0 group-hover:opacity-100 transition-opacity"
+                       style={{ transform: `translateX(-50%) scale(${100 / imageZoom})` }}>
+                     <button className="w-4 h-4 bg-gray-600/90 border border-gray-100 text-white rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm" onMouseDown={rotateRight}>&lt;</button>
+                     
+                     <div className="rotation-handle relative w-8 h-8 bg-gray-800/90 border border-gray-600 rounded-full flex items-center justify-center cursor-grab backdrop-blur-sm" onMouseDown={handleRotationStart}>
+                        <span className="material-symbols-outlined text-white text-sm">sync</span>
+                        
+                        {(isRotating || rotation !== 0) && (
+                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap dir-ltr shadow-md border border-gray-700">
+                            {Number(rotation).toFixed(1)}°
+                          </div>
+                        )}
+                     </div>
 
-                    <div 
-                      className="rotation-handle relative w-8 h-8 bg-gray-800/90 border border-gray-600 rounded-full flex items-center justify-center cursor-grab active:cursor-grabbing shadow-lg backdrop-blur-sm"
-                      onMouseDown={handleRotationStart}
-                    >
-                      <span className="material-symbols-outlined text-white text-sm">sync</span>
-                      {(isRotating || rotation !== 0) && (
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 text-white text-[10px] px-1.5 py-0.5 rounded whitespace-nowrap dir-ltr shadow-md border border-gray-700">
-                          {Number(rotation).toFixed(1)}°
-                        </div>
-                      )}
-                    </div>
-
-                    <button 
-                      className="w-4 h-4 bg-gray-600/90 border border-gray-100 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-gray-700 transition-colors font-bold leading-none pb-0.5 backdrop-blur-sm"
-                      onMouseDown={rotateLeft}
-                    ><span>&gt;</span></button>
+                     <button className="w-4 h-4 bg-gray-600/90 border border-gray-100 text-white rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm" onMouseDown={rotateLeft}>&gt;</button>
                   </div>
 
                   <img
                     ref={imageRef}
                     src={thumbnailUrl}
                     alt={`עמוד ${pageNumber}`}
-                    className="rounded-lg shadow-lg select-none block"
-                    style={{
-                      maxWidth: 'none',
-                      pointerEvents: 'none'
-                    }}
+                    className="rounded-lg shadow-lg block select-none"
+                    draggable={false}
                     onDragStart={(e) => e.preventDefault()}
+                    style={{ maxWidth: 'none', pointerEvents: 'none', userSelect: 'none' }}
                   />
               </div>
               
-              {isSelectionMode && selectionStart && selectionEnd && (
+              {interactionMode === 'create' && selectionStart && selectionEnd && (
                 <div
                   className="absolute border-2 border-blue-500 bg-blue-500/20 pointer-events-none"
                   style={{
@@ -253,27 +406,68 @@ export default function ImagePanel({
                   }}
                 />
               )}
+
               {selectionRect && (
                 <div
-                  className="absolute border-4 border-green-500 bg-green-500/10 pointer-events-none animate-pulse"
+                  className="selection-box absolute border-2 border-green-500 bg-green-500/10 group/box"
                   style={{
                     left: `${selectionRect.x}px`,
                     top: `${selectionRect.y}px`,
                     width: `${selectionRect.width}px`,
-                    height: `${selectionRect.height}px`
+                    height: `${selectionRect.height}px`,
+                    cursor: 'move'
                   }}
+                  onMouseDown={handleMouseDownMove}
                 >
-                   <div 
-                    className="absolute -top-8 right-0 bg-green-500 text-white px-2 py-1 rounded text-xs font-bold whitespace-nowrap"
-                    style={{ transform: `scale(${100 / imageZoom})`, transformOrigin: 'bottom right' }}
+                  <ResizeHandle cursor="nw-resize" position="-top-1.5 -left-1.5" handle="nw" />
+                  <ResizeHandle cursor="n-resize" position="-top-1.5 left-1/2 -translate-x-1/2" handle="n" />
+                  <ResizeHandle cursor="ne-resize" position="-top-1.5 -right-1.5" handle="ne" />
+                  <ResizeHandle cursor="e-resize" position="top-1/2 -translate-y-1/2 -right-1.5" handle="e" />
+                  <ResizeHandle cursor="se-resize" position="-bottom-1.5 -right-1.5" handle="se" />
+                  <ResizeHandle cursor="s-resize" position="-bottom-1.5 left-1/2 -translate-x-1/2" handle="s" />
+                  <ResizeHandle cursor="sw-resize" position="-bottom-1.5 -left-1.5" handle="sw" />
+                  <ResizeHandle cursor="w-resize" position="top-1/2 -translate-y-1/2 -left-1.5" handle="w" />
+
+                  <button
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); downloadSelectedArea(); }}
+                    className="absolute bottom-0 right-[72px] translate-y-full mt-1 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center p-1 rounded shadow-md pointer-events-auto transition-colors z-30"
+                    title="הורד בחירה"
+                    style={{ transform: `scale(${100 / imageZoom})`, transformOrigin: 'top right', cursor: 'pointer' }}
                   >
-                    ✓ אזור נבחר
-                  </div>
+                    <span className="material-symbols-outlined text-[18px]">download</span>
+                  </button>
+
+                  <button
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); copySelectedArea(); }}
+                    className="absolute bottom-0 right-9 translate-y-full mt-1 bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center p-1 rounded shadow-md pointer-events-auto transition-colors z-30"
+                    title="העתק תמונה (Ctrl+C)"
+                    style={{ transform: `scale(${100 / imageZoom})`, transformOrigin: 'top right', cursor: 'pointer' }}
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                        {isCopied ? 'check' : 'content_copy'}
+                    </span>
+                  </button>
+
+                  <button
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => { e.stopPropagation(); handleOCRSelection(); }}
+                    disabled={isOcrProcessing}
+                    className="absolute bottom-0 right-0 translate-y-full mt-1 bg-green-600 hover:bg-green-700 text-white flex items-center justify-center p-1 rounded shadow-md pointer-events-auto transition-colors disabled:opacity-50 z-30"
+                    title="זהה טקסט"
+                    style={{ transform: `scale(${100 / imageZoom})`, transformOrigin: 'top right', cursor: 'pointer' }}
+                  >
+                    <span className={`material-symbols-outlined text-[18px] ${isOcrProcessing ? 'animate-spin' : ''}`}>
+                      {isOcrProcessing ? 'progress_activity' : 'check'}
+                    </span>
+                  </button>
                 </div>
               )}
+
             </div>
             
-            {isSelectionMode && !selectionRect && !selectionStart && !isRotating && (
+            {isSelectionMode && !selectionRect && interactionMode !== 'create' && (
               <div className="absolute top-4 left-4 bg-blue-600/90 backdrop-blur text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg flex items-center gap-2 animate-pulse pointer-events-none z-50">
                 <span className="material-symbols-outlined text-lg">crop_free</span>
                 <span>סמן אזור לזיהוי</span>
@@ -286,7 +480,7 @@ export default function ImagePanel({
           </div>
         )}
       </div>
-
+      
       <div
         className={`relative flex items-center justify-center hover:bg-primary/10 transition-colors ${layoutOrientation === 'horizontal' ? 'cursor-row-resize' : 'cursor-col-resize'}`}
         style={{
