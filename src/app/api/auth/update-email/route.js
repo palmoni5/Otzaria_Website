@@ -22,15 +22,15 @@ export async function POST(request) {
     await connectDB();
 
     const emailOwner = await User.findOne({ email: newEmail });
-    if (emailOwner && emailOwner.name !== session.user.name) {
+    if (emailOwner && emailOwner._id.toString() !== session.user.id) {
       return NextResponse.json(
         { error: 'כתובת המייל הזו כבר תפוסה על ידי משתמש אחר' }, 
         { status: 409 }
       );
     }
 
-    const updatedUser = await User.findOneAndUpdate(
-      { name: session.user.name },
+    const updatedUser = await User.findByIdAndUpdate(
+      session.user.id, // Assuming session.user.id holds the user's MongoDB _id
       { 
         $set: {
             email: newEmail,
