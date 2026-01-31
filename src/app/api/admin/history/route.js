@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import dbConnect from '@/lib/db';
-import ReminderHistory from '@/lib/models/reminderHistory';
+import ReminderHistory from '@/models/reminderHistory';
 
 export async function GET(req) {
   try {
