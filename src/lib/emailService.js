@@ -10,7 +10,6 @@ export async function sendBookNotification(bookName, bookSlug) {
         const list = await MailingList.findOne({ listName: 'new_books_subscribers' });
 
         if (!list || !list.emails || list.emails.length === 0) {
-            console.log('No subscribers list found or list is empty.');
             return { sent: false };
         }
 
@@ -24,7 +23,6 @@ export async function sendBookNotification(bookName, bookSlug) {
         }
 
         const validEmails = validUsers.map(u => u.email);
-        console.log(`Newsletter Check: Raw list size: ${list.emails.length}, Verified & Subscribed to send: ${validEmails.length}`);
 
         const transporter = nodemailer.createTransport({
             host: process.env.SMTP_HOST,

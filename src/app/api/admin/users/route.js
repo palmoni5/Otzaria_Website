@@ -103,6 +103,7 @@ export async function PUT(request) {
             updateData.isVerified = false;
             updateData.verificationToken = null;
             updateData.verificationTokenExpiry = null;
+            updateData.acceptReminders = false;
         }
 
         const updatedUser = await User.findByIdAndUpdate(
