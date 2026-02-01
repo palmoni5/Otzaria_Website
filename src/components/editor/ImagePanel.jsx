@@ -117,7 +117,7 @@ export default function ImagePanel({
 
         setSelectionRect({ x: newX, y: newY, width: newW, height: newH })
     }
-  }, [interactionMode, imageZoom, selectionRect, activeHandle])
+  }, [interactionMode, imageZoom, activeHandle])
 
 
   const handleMouseMove = (e) => {
