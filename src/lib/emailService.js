@@ -69,7 +69,8 @@ export async function sendBookNotification(bookName, bookSlug) {
                 from: {
                     name: "ספריית אוצריא",
                     address: process.env.SMTP_FROM
-                },                to: email, 
+                },
+                to: email, // שליחה ישירה לכל אחד
                 replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_FROM,
                 subject: `📚 ספר חדש בספרייה: ${bookName}`,
                 headers: {

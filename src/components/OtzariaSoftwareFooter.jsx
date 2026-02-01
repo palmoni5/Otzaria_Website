@@ -20,6 +20,9 @@ export default function OtzariaSoftwareFooter() {
           <Link href="/library" className="hover:text-primary transition-colors">
             הספרייה המקוונת
           </Link>
+          <Link href="/privacy" className="hover:text-primary transition-colors">
+            מדיניות פרטיות
+          </Link>
         </div>
       </div>
     </footer>
