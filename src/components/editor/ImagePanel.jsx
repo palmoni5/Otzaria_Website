@@ -72,8 +72,8 @@ export default function ImagePanel({
         
         if (newX < 0) newX = 0
         if (newY < 0) newY = 0
-        if (newX + selectionRect.width > imgWidth) newX = imgWidth - selectionRect.width
-        if (newY + selectionRect.height > imgHeight) newY = imgHeight - selectionRect.height
+        if (newX + dragStartRef.current.rectW > imgWidth) newX = imgWidth - dragStartRef.current.rectW;
+        if (newY + dragStartRef.current.rectH > imgHeight) newY = imgHeight - dragStartRef.current.rectH;
 
         setSelectionRect({
             ...selectionRect,
