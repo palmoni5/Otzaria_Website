@@ -14,6 +14,8 @@ export default function BookReminderPage() {
     const [customMessage, setCustomMessage] = useState('שמנו לב כי ישנם עמודים שתפסת לעריכה וטרם הושלמו.\nנודה לך מאוד אם תוכל להיכנס למערכת ולהשלים את העבודה עליהם בהקדם, כדי שנוכל לקדם את הספר לפרסום לטובת הכלל.');
     
     const [recipients, setRecipients] = useState([]);
+    const [foundUsersDetails, setFoundUsersDetails] = useState([]);
+    const [showUserSelection, setShowUserSelection] = useState(false);
     const [isCheckingRecipients, setIsCheckingRecipients] = useState(false);
     
     const [status, setStatus] = useState({
@@ -110,12 +112,14 @@ export default function BookReminderPage() {
     useEffect(() => {
         if (!selectedBookPath) {
             setRecipients([]);
+            setFoundUsersDetails([]);
             return;
         }
 
         const fetchRecipients = async () => {
             setIsCheckingRecipients(true);
             setRecipients([]);
+            setFoundUsersDetails([]);
 
             try {
                 const response = await fetch(`/api/book/${encodeURIComponent(selectedBookPath)}`);
@@ -128,7 +132,7 @@ export default function BookReminderPage() {
                         if (u.id) userMap.set(normalizeId(u.id), u);
                     });
 
-                    const foundEmails = new Set();
+                    const uniqueUsers = new Map();
                     
                     data.pages.forEach(page => {
                         if (page.status === 'in-progress') {
@@ -141,13 +145,19 @@ export default function BookReminderPage() {
                             if (userId) {
                                 const userDetails = userMap.get(userId);
                                 if (userDetails && userDetails.email && userDetails.acceptReminders && userDetails.isVerified) {
-                                    foundEmails.add(userDetails.email);
+                                    uniqueUsers.set(userDetails.email, {
+                                        email: userDetails.email,
+                                        name: userDetails.name || 'משתמש ללא שם',
+                                        id: userId
+                                    });
                                 }
                             }
                         }
                     });
 
-                    setRecipients(Array.from(foundEmails));
+                    const usersList = Array.from(uniqueUsers.values());
+                    setFoundUsersDetails(usersList);
+                    setRecipients(usersList.map(u => u.email));
                 }
             } catch (error) {
                 console.error('Error fetching recipients:', error);
@@ -160,6 +170,16 @@ export default function BookReminderPage() {
             fetchRecipients();
         }
     }, [selectedBookPath, allUsers]);
+
+    const toggleRecipient = (email) => {
+        setRecipients(prev => {
+            if (prev.includes(email)) {
+                return prev.filter(e => e !== email);
+            } else {
+                return [...prev, email];
+            }
+        });
+    };
 
     const generateEmailHtml = (bookName, messageBody) => {
         const siteUrl = typeof window !== 'undefined' ? window.location.origin : '';
@@ -198,6 +218,8 @@ export default function BookReminderPage() {
             const selectedBook = books.find(b => b.path === selectedBookPath);
             const emailHtml = generateEmailHtml(selectedBook.name, customMessage);
             const emailSubject = `הודעה מערכת בנוגע לספר "${selectedBook.name}"`;
+            
+            const isPartial = recipients.length < foundUsersDetails.length;
 
             const response = await fetch('/api/admin/send-email', { 
                 method: 'POST',
@@ -208,7 +230,8 @@ export default function BookReminderPage() {
                     html: emailHtml,
                     text: customMessage,
                     bookName: selectedBook.name,
-                    bookPath: selectedBook.path
+                    bookPath: selectedBook.path,
+                    isPartial: isPartial
                 }),
             });
 
@@ -229,7 +252,8 @@ export default function BookReminderPage() {
                 id: Date.now().toString(),
                 adminName: session?.user?.name || 'אדמין',
                 bookName: selectedBook.name,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                isPartial: isPartial
             };
             
             setHistory(prev => [newHistoryItem, ...prev]);
@@ -276,23 +300,35 @@ export default function BookReminderPage() {
                     </select>
 
                     {selectedBookPath && (
-                        <div className="mt-3 flex items-center gap-2 text-sm animate-in fade-in">
-                            {isCheckingRecipients ? (
-                                <span className="text-blue-600 flex items-center gap-2">
-                                    <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
-                                    מאתר נמענים...
-                                </span>
-                            ) : recipients.length > 0 ? (
-                                <span className="text-green-600 font-bold flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full border border-green-200">
-                                    <span className="material-symbols-outlined text-sm">group</span>
-                                    נמצאו {recipients.length} נמענים פעילים
-                                </span>
-                            ) : (
-                                <span className="text-red-500 flex items-center gap-2 bg-red-50 px-3 py-1 rounded-full border border-red-200">
-                                    <span className="material-symbols-outlined text-sm">warning</span>
-                                    לא נמצאו נמענים פעילים בספר זה שאישרו תזכורות ואימתו את כתובתם
-                                </span>
-                            )}
+                        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm animate-in fade-in">
+                            <div>
+                                {isCheckingRecipients ? (
+                                    <span className="text-blue-600 flex items-center gap-2">
+                                        <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                                        מאתר נמענים...
+                                    </span>
+                                ) : foundUsersDetails.length > 0 ? (
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-green-600 font-bold flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full border border-green-200">
+                                            <span className="material-symbols-outlined text-sm">group</span>
+                                            נמצאו {foundUsersDetails.length} משתמשים ({recipients.length} נבחרו)
+                                        </span>
+                                        
+                                        <button 
+                                            type="button"
+                                            onClick={() => setShowUserSelection(true)}
+                                            className="text-primary hover:text-blue-800 underline font-medium text-sm transition-colors"
+                                        >
+                                            בחירת משתמשים מסויימים
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <span className="text-red-500 flex items-center gap-2 bg-red-50 px-3 py-1 rounded-full border border-red-200">
+                                        <span className="material-symbols-outlined text-sm">warning</span>
+                                        לא נמצאו נמענים פעילים בספר זה
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -364,7 +400,14 @@ export default function BookReminderPage() {
                             <div key={item.id} className="p-4 border-b border-gray-100 last:border-0 hover:bg-white transition-colors flex items-center justify-between group">
                                 <div>
                                     <div className="font-bold text-gray-800">{item.bookName}</div>
-                                    <div className="text-sm text-gray-500">נשלח על ידי: {item.adminName}</div>
+                                    <div className="text-sm text-gray-500 flex items-center gap-2">
+                                        <span>נשלח על ידי: {item.adminName}</span>
+                                        {item.isPartial && (
+                                            <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">
+                                                נשלח לחלק מהמשתמשים
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <div className="text-left">
@@ -386,6 +429,73 @@ export default function BookReminderPage() {
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {showUserSelection && (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col">
+                        <div className="p-4 border-b flex justify-between items-center bg-gray-50 rounded-t-2xl">
+                            <h3 className="font-bold text-lg text-gray-800">בחירת נמענים</h3>
+                            <button 
+                                type="button"
+                                onClick={() => setShowUserSelection(false)} 
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+                        
+                        <div className="p-4 overflow-y-auto flex-1">
+                            <div className="flex justify-between mb-4 text-sm">
+                                <button 
+                                    type="button"
+                                    onClick={() => setRecipients(foundUsersDetails.map(u => u.email))}
+                                    className="text-blue-600 hover:underline"
+                                >
+                                    בחר הכל
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setRecipients([])}
+                                    className="text-red-600 hover:underline"
+                                >
+                                    נקה הכל
+                                </button>
+                            </div>
+
+                            <div className="space-y-2">
+                                {foundUsersDetails.map((user) => (
+                                    <label 
+                                        key={user.email} 
+                                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all
+                                            ${recipients.includes(user.email) ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50 border-gray-100'}`}
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={recipients.includes(user.email)}
+                                            onChange={() => toggleRecipient(user.email)}
+                                            className="w-5 h-5 rounded text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <div>
+                                            <div className="font-bold text-gray-800">{user.name}</div>
+                                            <div className="text-xs text-gray-500">{user.email}</div>
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t bg-gray-50 rounded-b-2xl flex justify-end">
+                            <button
+                                type="button"
+                                onClick={() => setShowUserSelection(false)}
+                                className="bg-primary text-white px-6 py-2 rounded-lg font-bold hover:bg-blue-700 transition-colors"
+                            >
+                                אישור ({recipients.length})
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

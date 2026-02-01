@@ -4,7 +4,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { encryptToken } from '@/app/api/user/unsubscribe/route';
 import dbConnect from '@/lib/db';
-import ReminderHistory from '@/lib/models/reminderHistory';
+import ReminderHistory from '@/models/reminderHistory';
+import User from '@/models/User';
 
 export async function POST(request) {
     try {
@@ -14,10 +15,41 @@ export async function POST(request) {
         }
 
         const body = await request.json();
-        const { to, subject, text, html, bcc, cc, bookName, bookPath } = body;
+        const { to, subject, text, html, bcc, cc, bookName, bookPath, isPartial } = body;
 
         if ((!to && !bcc) || !subject) {
             return NextResponse.json({ error: 'Missing recipients or subject' }, { status: 400 });
+        }
+
+        const allRecipients = new Set();
+        if (to) (Array.isArray(to) ? to : [to]).forEach(e => allRecipients.add(e.trim()));
+        if (bcc) (Array.isArray(bcc) ? bcc : [bcc]).forEach(e => allRecipients.add(e.trim()));
+        if (cc) (Array.isArray(cc) ? cc : [cc]).forEach(e => allRecipients.add(e.trim()));
+
+        const rawRecipientsArray = Array.from(allRecipients);
+
+        if (rawRecipientsArray.length === 0) {
+            return NextResponse.json({ error: 'No recipients provided' }, { status: 400 });
+        }
+
+        await dbConnect();
+        const validUsers = await User.find({
+            email: { $in: rawRecipientsArray },
+            isVerified: true,
+            acceptReminders: true
+        }).select('email');
+
+        const validEmailsSet = new Set(validUsers.map(u => u.email));
+
+        const filteredRecipients = rawRecipientsArray.filter(email => validEmailsSet.has(email));
+
+        console.log(`[Server Check] Requests: ${rawRecipientsArray.length}, Valid: ${filteredRecipients.length}`);
+
+        if (filteredRecipients.length === 0) {
+            return NextResponse.json({ 
+                success: false, 
+                error: 'לא נמצאו נמענים תקניים (מאומתים ומאשרי תזכורות) ברשימה שנשלחה.' 
+            }, { status: 400 });
         }
 
         const transporter = nodemailer.createTransport({
@@ -31,14 +63,7 @@ export async function POST(request) {
             tls: { rejectUnauthorized: false }
         });
 
-        const allRecipients = new Set();
-        if (to) (Array.isArray(to) ? to : [to]).forEach(e => allRecipients.add(e.trim()));
-        if (bcc) (Array.isArray(bcc) ? bcc : [bcc]).forEach(e => allRecipients.add(e.trim()));
-        if (cc) (Array.isArray(cc) ? cc : [cc]).forEach(e => allRecipients.add(e.trim()));
-
-        const recipientsArray = Array.from(allRecipients);
-
-        const sendResults = await Promise.allSettled(recipientsArray.map(async (email) => {
+        const sendResults = await Promise.allSettled(filteredRecipients.map(async (email) => {
             const secureToken = encryptToken(email);
             const unsubUrl = `${process.env.NEXTAUTH_URL}/api/user/unsubscribe?t=${secureToken}&action=reminder`;
 
@@ -70,13 +95,13 @@ export async function POST(request) {
 
         if (successful > 0 && bookName) {
             try {
-                await dbConnect();
                 await ReminderHistory.create({
                     adminName: session.user.name || 'Admin',
                     adminEmail: session.user.email,
                     bookName: bookName,
                     bookPath: bookPath || '',
                     recipientCount: successful,
+                    isPartial: isPartial || (successful < rawRecipientsArray.length),
                     timestamp: new Date()
                 });
                 console.log('History saved successfully');
@@ -85,7 +110,7 @@ export async function POST(request) {
             }
         }
 
-        if (successful === 0 && recipientsArray.length > 0) {
+        if (successful === 0 && filteredRecipients.length > 0) {
             return NextResponse.json({ 
                 success: false, 
                 error: 'כל שליחות המיילים נכשלו. בדוק את הגדרות ה-SMTP בשרת.' 
@@ -94,7 +119,7 @@ export async function POST(request) {
 
         return NextResponse.json({ 
             success: true, 
-            details: { successful, failed }
+            details: { successful, failed, filteredOut: rawRecipientsArray.length - filteredRecipients.length }
         });
 
     } catch (error) {

@@ -50,6 +50,10 @@ export default function DashboardPage() {
   const [showEmailConfirmation, setShowEmailConfirmation] = useState(false)
 
   useEffect(() => {
+      update();
+    }, []);
+
+  useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/library/auth/login')
     } else if (status === 'authenticated') {

@@ -36,7 +36,8 @@ export async function POST(request) {
             email: newEmail,
             isVerified: false,
             verificationToken: null,
-            verificationTokenExpiry: null
+            verificationTokenExpiry: null,
+            acceptReminders: false
         }
       },
       { new: true }

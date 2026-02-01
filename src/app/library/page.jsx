@@ -1,8 +1,8 @@
 import Header from '@/components/Header'
 import Hero from '@/components/Hero'
+import StatsSection from '@/components/StatsSection'
 import Features from '@/components/Features'
 import ContributeSection from '@/components/ContributeSection'
-import SystemNotice from '@/components/SystemNotice'
 
 export default function LibraryHome() {
   return (
@@ -11,6 +11,9 @@ export default function LibraryHome() {
 
       <main className="flex-1">
         <Hero />
+        
+        <StatsSection /> 
+        
         <Features />
         <ContributeSection />
       </main>

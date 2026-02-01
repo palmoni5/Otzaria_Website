@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import dbConnect from '@/lib/db';
-import ReminderHistory from '@/lib/models/reminderHistory';
+import ReminderHistory from '@/models/reminderHistory';
 
 export async function GET(req) {
   try {
@@ -23,7 +23,8 @@ export async function GET(req) {
       adminName: item.adminName || 'Unknown',
       bookName: item.bookName || 'Unknown Book',
       timestamp: item.timestamp,
-      recipientCount: item.recipientCount || 0
+      recipientCount: item.recipientCount || 0,
+      isPartial: item.isPartial || false
     }));
 
     return NextResponse.json({ success: true, history: formattedHistory });
@@ -45,7 +46,7 @@ export async function POST(req) {
     if (!text) return NextResponse.json({ success: false, error: 'Empty body' }, { status: 400 });
     
     const body = JSON.parse(text);
-    const { bookName, bookPath, recipientCount } = body;
+    const { bookName, bookPath, recipientCount, isPartial } = body;
 
     await dbConnect();
 
@@ -55,6 +56,7 @@ export async function POST(req) {
       bookName,
       bookPath,
       recipientCount: recipientCount || 0,
+      isPartial: isPartial || false,
       timestamp: new Date()
     });
 

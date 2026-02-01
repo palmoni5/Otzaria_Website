@@ -1,13 +1,28 @@
 import nodemailer from 'nodemailer';
-import mongoose from 'mongoose';
 import { encryptToken } from '@/app/api/user/unsubscribe/route';
+import User from '@/models/User'; 
+import MailingList from '@/models/MailingList';
+import dbConnect from '@/lib/db';
 
 export async function sendBookNotification(bookName, bookSlug) {
     try {
-        const MailingList = mongoose.models.MailingList || mongoose.model('MailingList', new mongoose.Schema({ listName: String, emails: [String] }));
+        await dbConnect();
         const list = await MailingList.findOne({ listName: 'new_books_subscribers' });
 
-        if (!list || !list.emails || list.emails.length === 0) return { sent: false };
+        if (!list || !list.emails || list.emails.length === 0) {
+            return { sent: false };
+        }
+
+        const validUsers = await User.find({
+            email: { $in: list.emails },
+            isVerified: true 
+        }).select('email');
+
+        if (validUsers.length === 0) {
+            return { sent: false, error: 'No valid verified users found in the subscription list' };
+        }
+
+        const validEmails = validUsers.map(u => u.email);
 
         const transporter = nodemailer.createTransport({
             host: process.env.SMTP_HOST,
@@ -16,10 +31,12 @@ export async function sendBookNotification(bookName, bookSlug) {
             auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
         });
 
-        // שליחה בלולאה (במנות קטנות כדי לא לחסום את השרת)
-        const sendPromises = list.emails.map(async (email) => {
+       const sendPromises = finalToSendList.map(async (email) => {
             const secureToken = encryptToken(email);
             const unsubUrl = `${process.env.NEXTAUTH_URL}/api/user/unsubscribe?t=${secureToken}&action=new_books`;
+            
+            const safeSlug = encodeURIComponent(bookSlug); 
+
             const emailHtml = `
             <div dir="rtl" style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 40px; text-align: center;">
                 <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden;">
@@ -35,7 +52,7 @@ export async function sendBookNotification(bookName, bookSlug) {
                             נוסף כעת לספרייה וזמין לעריכה.
                         </p>
                         <div style="margin: 30px 0;">
-                            <a href="${process.env.NEXTAUTH_URL}/library/book/${bookSlug}" style="background-color: #d4a373; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
+                            <a href="${process.env.NEXTAUTH_URL}/library/book/${safeSlug}" style="background-color: #d4a373; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
                                 כנס לספרייה לעריכה
                             </a>
                         </div>
@@ -65,7 +82,7 @@ export async function sendBookNotification(bookName, bookSlug) {
         });
 
         await Promise.allSettled(sendPromises);
-        return { sent: true, count: list.emails.length };
+        return { sent: true, count: validEmails.length };
 
     } catch (error) {
         console.error('Email Service Error:', error);
