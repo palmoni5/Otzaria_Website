@@ -2,14 +2,16 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Header from '@/components/Header'
 import ChangePasswordForm from '@/components/ChangePasswordForm'
+import { useDialog } from '@/components/DialogContext'
 
 export default function DashboardPage() {
   const { data: session, status, update } = useSession()
   const router = useRouter()
+  const { showAlert, showConfirm } = useDialog()
   
   // Stats State
   const [stats, setStats] = useState({
@@ -34,10 +36,6 @@ export default function DashboardPage() {
   const [replyText, setReplyText] = useState('')
   const [sendingReply, setSendingReply] = useState(false)
 
-  // Notices
-  const [notice, setNotice] = useState(null)
-  const noticeTimeoutRef = useRef(null)
-
   // Notifications Subscription State
   const [showNotifModal, setShowNotifModal] = useState(false)
   const [isSubscribed, setIsSubscribed] = useState(false)
@@ -47,7 +45,6 @@ export default function DashboardPage() {
   const [showEmailModal, setShowEmailModal] = useState(false)
   const [newEmail, setNewEmail] = useState('')
   const [updatingEmail, setUpdatingEmail] = useState(false)
-  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false)
 
   useEffect(() => {
       update();
@@ -126,18 +123,16 @@ export default function DashboardPage() {
       
       if (result.success) {
         setIsSubscribed(!isSubscribed)
-        showNoticeWithTimeout(
-          'success', 
-          !isSubscribed ? 'נרשמת בהצלחה לקבלת התראות!' : 'הסרת את הרישום מההתראות.'
-        )
-        setTimeout(() => {
-          setShowNotifModal(false);
-        }, 500);
+        showAlert(
+            'הצלחה', 
+            !isSubscribed ? 'נרשמת בהצלחה לקבלת התראות!' : 'הסרת את הרישום מההתראות.'
+        );
+        setShowNotifModal(false);
       } else {
-        showNoticeWithTimeout('error', 'שגיאה בביצוע הפעולה')
+        showAlert('שגיאה', 'שגיאה בביצוע הפעולה');
       }
     } catch (error) {
-      showNoticeWithTimeout('error', 'שגיאה בתקשורת')
+      showAlert('שגיאה', 'שגיאה בתקשורת');
     } finally {
       setLoadingSub(false)
     }
@@ -149,33 +144,9 @@ export default function DashboardPage() {
     }
   }, [showNotifModal])
 
-  const showNoticeWithTimeout = (type, text, duration = 5000) => {
-    setNotice({ type, text })
-
-    if (noticeTimeoutRef.current) {
-      clearTimeout(noticeTimeoutRef.current)
-      noticeTimeoutRef.current = null
-    }
-
-    if (duration) {
-      noticeTimeoutRef.current = setTimeout(() => {
-        setNotice(null)
-        noticeTimeoutRef.current = null
-      }, duration)
-    }
-  }
-
-  useEffect(() => {
-    return () => {
-      if (noticeTimeoutRef.current) {
-        clearTimeout(noticeTimeoutRef.current)
-      }
-    }
-  }, [])
-
   const handleUpdateEmail = async () => {
     if (!newEmail || !newEmail.includes('@')) {
-        showNoticeWithTimeout('error', 'נא להזין כתובת מייל תקינה');
+        showAlert('שגיאה', 'נא להזין כתובת מייל תקינה');
         return;
     }
     
@@ -196,13 +167,13 @@ export default function DashboardPage() {
 
         if (res.ok) {
             await update();
-            showNoticeWithTimeout('success', 'כתובת המייל עודכנה בהצלחה!');
+            showAlert('הצלחה', 'כתובת המייל עודכנה בהצלחה!');
             setShowEmailModal(false);
         } else {
-            showNoticeWithTimeout('error', data.error || 'שגיאה בעדכון המייל');
+            showAlert('שגיאה', data.error || 'שגיאה בעדכון המייל');
         }
     } catch (error) {
-        showNoticeWithTimeout('error', 'שגיאת תקשורת');
+        showAlert('שגיאה', 'שגיאת תקשורת');
     } finally {
         setUpdatingEmail(false);
     }
@@ -210,7 +181,7 @@ export default function DashboardPage() {
 
   const handleSendMessage = async () => {
     if (!messageSubject.trim() || !messageText.trim()) {
-      showNoticeWithTimeout('error', 'נא למלא את כל השדות')
+      showAlert('שגיאה', 'נא למלא את כל השדות')
       return
     }
 
@@ -228,17 +199,17 @@ export default function DashboardPage() {
 
       const result = await response.json()
       if (result.success) {
-        showNoticeWithTimeout('success', 'ההודעה נשלחה בהצלחה למנהלים')
+        showAlert('הצלחה', 'ההודעה נשלחה בהצלחה למנהלים')
         setMessageSubject('')
         setMessageText('')
         setShowMessageForm(false)
         loadMyMessages()
       } else {
-        showNoticeWithTimeout('error', result.error || 'שגיאה בשליחת הודעה')
+        showAlert('שגיאה', result.error || 'שגיאה בשליחת הודעה')
       }
     } catch (error) {
       console.error('Error sending message:', error)
-      showNoticeWithTimeout('error', 'שגיאה בשליחת הודעה')
+      showAlert('שגיאה', 'שגיאה בשליחת הודעה')
     } finally {
       setSendingMessage(false)
     }
@@ -246,7 +217,7 @@ export default function DashboardPage() {
 
   const handleSendReply = async (messageId) => {
     if (!replyText.trim()) {
-      showNoticeWithTimeout('error', 'נא לכתוב תגובה')
+      showAlert('שגיאה', 'נא לכתוב תגובה')
       return
     }
 
@@ -260,16 +231,16 @@ export default function DashboardPage() {
 
       const result = await response.json()
       if (result.success) {
-        showNoticeWithTimeout('success', 'התגובה נשלחה בהצלחה')
+        showAlert('הצלחה', 'התגובה נשלחה בהצלחה')
         setReplyText('')
         setReplyingToMessageId(null)
         loadMyMessages()
       } else {
-        showNoticeWithTimeout('error', result.error || 'שגיאה בשליחת התגובה')
+        showAlert('שגיאה', result.error || 'שגיאה בשליחת התגובה')
       }
     } catch (error) {
       console.error('Error sending reply:', error)
-      showNoticeWithTimeout('error', 'שגיאה בשליחת התגובה')
+      showAlert('שגיאה', 'שגיאה בשליחת התגובה')
     } finally {
       setSendingReply(false)
     }
@@ -360,26 +331,6 @@ export default function DashboardPage() {
           <p className="text-on-surface/70 mb-8">
             ברוך הבא לאיזור האישי שלך
           </p>
-
-          {notice && (
-            <div
-              className={`mb-8 p-4 rounded-lg flex items-start justify-between gap-4 ${
-                notice.type === 'success'
-                  ? 'bg-green-50 text-green-800'
-                  : 'bg-red-50 text-red-800'
-              }`}
-              role={notice.type === 'error' ? 'alert' : 'status'}
-            >
-              <p className="font-medium">{notice.text}</p>
-              <button
-                onClick={() => setNotice(null)}
-                className="p-1 rounded-lg hover:bg-black/5 transition-colors"
-                aria-label="סגור הודעה"
-              >
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-          )}
 
           {/* Stats Cards */}
           <div className="grid md:grid-cols-3 gap-6 mb-12">
@@ -604,14 +555,18 @@ export default function DashboardPage() {
                 <button
                     onClick={() => {
                         if (!newEmail || !newEmail.includes('@')) {
-                            showNoticeWithTimeout('error', 'נא להזין כתובת מייל תקינה');
+                            showAlert('שגיאה', 'נא להזין כתובת מייל תקינה');
                             return;
                         }
                         if (newEmail === session?.user?.email) {
                             setShowEmailModal(false);
                             return;
                         }
-                        setShowEmailConfirmation(true);
+                        showConfirm(
+                            'עדכון כתובת מייל',
+                            'שינוי כתובת המייל ידרוש ביצוע אימות מחדש לכתובת החדשה כדי להמשיך להשתמש בחשבון. האם אתה בטוח?',
+                            () => handleUpdateEmail()
+                        );
                     }}
                     disabled={updatingEmail || !newEmail || newEmail === session?.user?.email}
                     className="flex-[2] px-4 py-2 bg-primary text-on-primary rounded-lg hover:bg-accent transition-colors flex items-center justify-center gap-2 font-bold shadow-md"
@@ -628,43 +583,6 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {showEmailConfirmation && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="flex flex-col bg-white glass-strong rounded-2xl w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200 border border-yellow-100">
-                <div className="p-6 text-center space-y-4">
-                    <div className="mx-auto w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center">
-                        <span className="material-symbols-outlined text-4xl text-yellow-600">
-                            warning
-                        </span>
-                    </div>
-                    <h3 className="text-xl font-bold text-on-surface">
-                        האם אתה בטוח?
-                    </h3>
-                    <p className="text-on-surface/80 text-sm leading-relaxed">
-                        שינוי כתובת המייל ידרוש ביצוע <strong>אימות מחדש</strong> לכתובת החדשה כדי להמשיך להשתמש בחשבון.
-                    </p>
-                </div>
-                <div className="flex gap-3 p-6 border-t border-surface-variant bg-gray-50/50 rounded-b-2xl">
-                    <button
-                        onClick={() => setShowEmailConfirmation(false)}
-                        className="flex-1 px-4 py-2 border border-surface-variant text-on-surface rounded-lg hover:bg-surface-variant transition-colors"
-                    >
-                        ביטול
-                    </button>
-                    <button
-                        onClick={() => {
-                            setShowEmailConfirmation(false);
-                            handleUpdateEmail(); // קריאה לפונקציית העדכון האמיתית
-                        }}
-                        className="flex-1 px-4 py-2 bg-primary text-on-primary rounded-lg hover:bg-accent transition-colors font-bold shadow-sm"
-                    >
-                        כן, אני בטוח
-                    </button>
-                </div>
-            </div>
         </div>
       )}
 
