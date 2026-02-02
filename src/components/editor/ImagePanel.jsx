@@ -392,18 +392,14 @@ export default function ImagePanel({
     if (!container) return
 
     const handleWheelZoom = (e) => {
-      // בדיקה אם Ctrl לחוץ
       if (e.ctrlKey || e.metaKey) {
-        e.preventDefault() // מונע זום דפדפן
-        e.stopPropagation() // מונע אירועים אחרים
+        e.preventDefault()
+        e.stopPropagation()
 
-        // לוגיקת כיוון (למעלה/למטה)
         const delta = e.deltaY > 0 ? -10 : 10 
         
-        // בדיקת תקינות והפעלת השינוי
         if (typeof setImageZoom === 'function') {
             setImageZoom(prevZoom => {
-                // המרה בטוחה למספר למקרה שהערך מגיע כמחרוזת
                 const current = Number(prevZoom) || 100 
                 const newZoom = current + delta
                 return Math.max(10, Math.min(newZoom, 500))
@@ -414,7 +410,6 @@ export default function ImagePanel({
       }
     }
 
-    // הוספת המאזין
     container.addEventListener('wheel', handleWheelZoom, { passive: false })
 
     return () => {
