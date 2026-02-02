@@ -42,12 +42,12 @@ export function DialogProvider({ children }) {
     setDialogConfig(prev => ({ ...prev, isOpen: false }))
   }, [])
 
-  const handleConfirm = () => {
+  const handleConfirm = useCallback(() => {
     if (dialogConfig.onConfirm) {
       dialogConfig.onConfirm()
     }
     closeDialog()
-  }
+  }, [dialogConfig.onConfirm, closeDialog])
 
   return (
     <DialogContext.Provider value={{ showAlert, showConfirm, closeDialog }}>
