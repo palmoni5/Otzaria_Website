@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
 
-// Components
 import EditorHeader from '@/components/editor/EditorHeader'
 import EditorToolbar from '@/components/editor/EditorToolbar'
 import ImagePanel from '@/components/editor/ImagePanel'
@@ -16,7 +15,6 @@ import InfoDialog from '@/components/editor/modals/InfoDialog'
 import { useDialog } from '@/components/DialogContext'
 import { useLoading } from '@/components/LoadingContext'
 
-// Hooks
 import { useAutoSave } from '@/hooks/useAutoSave'
 import { useOCR } from '@/hooks/useOCR'
 
@@ -29,13 +27,11 @@ export default function EditPage() {
   const { showAlert, showConfirm } = useDialog()
   const { startLoading, stopLoading } = useLoading()
 
-  // Data State
   const [bookData, setBookData] = useState(null)
   const [pageData, setPageData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  // Editor State
   const [content, setContent] = useState('')
   const [leftColumn, setLeftColumn] = useState('')
   const [rightColumn, setRightColumn] = useState('')
@@ -43,7 +39,6 @@ export default function EditPage() {
   const [activeTextarea, setActiveTextarea] = useState(null)
   const [selectedFont, setSelectedFont] = useState('monospace')
    
-  // Layout State
   const [imageZoom, setImageZoom] = useState(100)
   const [rotation, setRotation] = useState(0)
   const [layoutOrientation, setLayoutOrientation] = useState('vertical')
@@ -52,11 +47,9 @@ export default function EditPage() {
   const [columnWidth, setColumnWidth] = useState(50)
   const [isColumnResizing, setIsColumnResizing] = useState(false)
   
-  // DOM Refs
   const splitContainerRef = useRef(null)
   const textEditorContainerRef = useRef(null)
   
-  // Value Refs for persistent access during resizing
   const imagePanelWidthRef = useRef(imagePanelWidth)
   const columnWidthRef = useRef(columnWidth)
 
@@ -65,24 +58,20 @@ export default function EditPage() {
 
   const [swapPanels, setSwapPanels] = useState(false)
   
-  // Full Screen & Toolbar State
   const [isFullScreen, setIsFullScreen] = useState(false)
   const [isToolbarCollapsed, setIsToolbarCollapsed] = useState(false)
 
-  // Split Logic State
   const [showSplitDialog, setShowSplitDialog] = useState(false)
   const [rightColumnName, setRightColumnName] = useState('חלק 1')
   const [leftColumnName, setLeftColumnName] = useState('חלק 2')
   const [splitMode, setSplitMode] = useState('content')
   const [isContentSplit, setIsContentSplit] = useState(false)
 
-  // Find & Replace State
   const [showFindReplace, setShowFindReplace] = useState(false)
   const [findText, setFindText] = useState('')
   const [replaceText, setReplaceText] = useState('')
   const [savedSearches, setSavedSearches] = useState([])
 
-  // Selection & OCR State
   const [isSelectionMode, setIsSelectionMode] = useState(false)
   const [selectionStart, setSelectionStart] = useState(null)
   const [selectionEnd, setSelectionEnd] = useState(null)
@@ -90,7 +79,6 @@ export default function EditPage() {
   const [ocrMethod, setOcrMethod] = useState('ocrwin')
   const { isProcessing: isOcrProcessing, performGeminiOCR, performTesseractOCR, performOCRWin } = useOCR()
 
-  // Settings State
   const [showSettings, setShowSettings] = useState(false)
   const [showInfoDialog, setShowInfoDialog] = useState(false)
   const [userApiKey, setUserApiKey] = useState('')
@@ -100,7 +88,6 @@ export default function EditPage() {
 
   const { save: debouncedSave, status: saveStatus } = useAutoSave()
 
-  // Load Settings & Saved Searches & Preferences
   useEffect(() => {
     const savedApiKey = localStorage.getItem('gemini_api_key')
     const savedPrompt = localStorage.getItem('gemini_prompt')
@@ -671,10 +658,18 @@ export default function EditPage() {
 
   const handleOCR = async () => {
     if (!selectionRect) return showAlert('שגיאה', 'בחר אזור')
-    startLoading('מזהה טקסט...') // התחלת טעינה גלובלית
+    
+    let isCancelled = false;
+
+    // הפעלת הטעינה עם Callback לביטול
+    startLoading('מזהה טקסט...', () => {
+        isCancelled = true;
+    }) 
 
     try {
         const response = await fetch(pageData.thumbnail)
+        if (isCancelled) return;
+
         const blob = await response.blob()
         const img = await createImageBitmap(blob)
         
@@ -697,13 +692,18 @@ export default function EditPage() {
 
         const croppedBlob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.95))
         
+        if (isCancelled) return;
+
         let text = ''
         if (ocrMethod === 'gemini') text = await performGeminiOCR(croppedBlob, userApiKey, selectedModel, customPrompt)
         else if (ocrMethod === 'ocrwin') text = await performOCRWin(croppedBlob)
         else text = await performTesseractOCR(croppedBlob)
         
+        // בדיקת ביטול אחרי סיום ה-OCR ולפני עדכון ה-state
+        if (isCancelled) return;
+
         if (!text) {
-             stopLoading() // עצירה לפני Alert
+             stopLoading() 
              return showAlert('שגיאה', 'לא זוהה טקסט')
         }
         
@@ -718,11 +718,14 @@ export default function EditPage() {
         }
         setSelectionRect(null)
         setIsSelectionMode(false)
-        stopLoading() // עצירה בהצלחה
+        stopLoading() 
     } catch (e) {
-        console.error(e)
-        stopLoading() // עצירה בכישלון
-        showAlert('שגיאה', 'שגיאה ב-OCR: ' + e.message)
+        // אם בוטל, אנחנו לא מציגים שגיאה
+        if (!isCancelled) {
+            console.error(e)
+            stopLoading() 
+            showAlert('שגיאה', 'שגיאה ב-OCR: ' + e.message)
+        }
     }
   }
 
