@@ -339,9 +339,13 @@ export default function AdminBooksPage() {
                     onClick={() => setShowMergeDialog(true)}
                     className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-all shadow-md w-full md:w-auto justify-center"
                 >
-                    <span className="material-symbols-outlined">call_merge</span>
-                    <span className="font-bold">מיזוג ספרים</span>
-                    <span className="text-xs opacity-80">(להשתמש רק על ספרים שלא התחילו טיפול)</span>
+                    <span className="material-symbols-outlined shrink-0">call_merge</span>
+                    <div className="flex flex-col items-start leading-tight">
+                        <span className="font-bold">מיזוג ספרים</span>
+                        <span className="text-[10px] opacity-80 whitespace-normal text-right">
+                            (להשתמש רק על ספרים שלא התחילו טיפול)
+                        </span>
+                    </div>
                 </button>
 
                 <button
