@@ -805,7 +805,9 @@ export default function EditPage() {
           >
             <ImagePanel 
               thumbnailUrl={pageData?.thumbnail} pageNumber={pageNumber}
-              imageZoom={imageZoom} isSelectionMode={isSelectionMode}
+              setImageZoom={setImageZoom}
+              imageZoom={imageZoom}
+              isSelectionMode={isSelectionMode}
               selectionStart={selectionStart} selectionEnd={selectionEnd}
               selectionRect={selectionRect}
               setSelectionStart={setSelectionStart} setSelectionEnd={setSelectionEnd}

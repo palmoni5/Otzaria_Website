@@ -392,20 +392,29 @@ export default function ImagePanel({
     if (!container) return
 
     const handleWheelZoom = (e) => {
+      // בדיקה אם Ctrl לחוץ
       if (e.ctrlKey || e.metaKey) {
-        e.preventDefault()
+        e.preventDefault() // מונע זום דפדפן
+        e.stopPropagation() // מונע אירועים אחרים
 
+        // לוגיקת כיוון (למעלה/למטה)
         const delta = e.deltaY > 0 ? -10 : 10 
         
-        if (setImageZoom) {
+        // בדיקת תקינות והפעלת השינוי
+        if (typeof setImageZoom === 'function') {
             setImageZoom(prevZoom => {
-                const newZoom = prevZoom + delta
+                // המרה בטוחה למספר למקרה שהערך מגיע כמחרוזת
+                const current = Number(prevZoom) || 100 
+                const newZoom = current + delta
                 return Math.max(10, Math.min(newZoom, 500))
             })
+        } else {
+            console.error("setImageZoom prop is missing or not a function!");
         }
       }
     }
-יעבוד
+
+    // הוספת המאזין
     container.addEventListener('wheel', handleWheelZoom, { passive: false })
 
     return () => {
@@ -453,7 +462,7 @@ export default function ImagePanel({
               onDragStart={(e) => e.preventDefault()}
               onMouseDown={handleMouseDownCreate} 
               style={{ 
-                transform: `scale(${imageZoom / 100})`,
+                zoom: `${imageZoom}%`,
                 cursor: isSelectionMode ? 'crosshair' : 'default',
                 transformOrigin: 'center center',
                 userSelect: 'none',
