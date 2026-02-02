@@ -5,8 +5,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import AddBookDialog from '@/components/AddBookDialog'
 import EditBookInfoDialog from '@/components/EditBookInfoDialog'
+import { useDialog } from '@/components/DialogContext'
 
 export default function AdminBooksPage() {
+  const { showAlert, showConfirm } = useDialog()
   const [books, setBooks] = useState([])
   const [loading, setLoading] = useState(true)
   const [showAddBook, setShowAddBook] = useState(false)
@@ -64,54 +66,55 @@ export default function AdminBooksPage() {
         }
     } catch (error) {
         console.error('Error fetching subscribers:', error);
-        alert('שגיאה בטעינת הרשימה');
+        showAlert('שגיאה', 'שגיאה בטעינת הרשימה');
     } finally {
         setIsLoadingSubscribers(false);
     }
   };
 
-  const handleDeleteSubscriber = async (email) => {
-    if (!confirm('האם אתה בטוח שברצונך להסיר מנוי זה מהרשימה?')) return;
-
-    try {
-        const response = await fetch('/api/admin/mailing-list/delete', { 
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
-        });
-        
-        const result = await response.json();
-        
-        if (result.success) {
-            setSubscribersList(prev => prev.filter(s => s.email !== email));
-        } else {
-            alert(result.error || 'שגיאה במחיקת המנוי');
+  const handleDeleteSubscriber = (email) => {
+    showConfirm('הסרת מנוי', 'האם אתה בטוח שברצונך להסיר מנוי זה מהרשימה?', async () => {
+        try {
+            const response = await fetch('/api/admin/mailing-list/delete', { 
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                setSubscribersList(prev => prev.filter(s => s.email !== email));
+                showAlert('הצלחה', 'המנוי הוסר בהצלחה');
+            } else {
+                showAlert('שגיאה', result.error || 'שגיאה במחיקת המנוי');
+            }
+        } catch (error) {
+            console.error('Error deleting subscriber:', error);
+            showAlert('שגיאה', 'שגיאה בתקשורת');
         }
-    } catch (error) {
-        console.error('Error deleting subscriber:', error);
-        alert('שגיאה בתקשורת');
-    }
+    });
   };
 
-  const handleDeleteBook = async (bookId) => {
-    if (!confirm('האם אתה בטוח שברצונך למחוק את הספר? כל העמודים והמידע יימחקו לצמיתות!')) return
-
-    try {
-      const response = await fetch('/api/admin/books/delete', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookId })
-      })
-      const result = await response.json()
-      if (result.success) {
-        setBooks(prev => prev.filter(b => b.id !== bookId)) 
-        alert('הספר נמחק בהצלחה!')
-      } else {
-        alert(result.error || 'שגיאה במחיקה')
-      }
-    } catch (e) {
-      alert('שגיאה במחיקת הספר')
-    }
+  const handleDeleteBook = (bookId) => {
+    showConfirm('מחיקת ספר', 'האם אתה בטוח שברצונך למחוק את הספר? כל העמודים והמידע יימחקו לצמיתות!', async () => {
+        try {
+            const response = await fetch('/api/admin/books/delete', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookId })
+            })
+            const result = await response.json()
+            if (result.success) {
+                setBooks(prev => prev.filter(b => b.id !== bookId)) 
+                showAlert('הצלחה', 'הספר נמחק בהצלחה!')
+            } else {
+                showAlert('שגיאה', result.error || 'שגיאה במחיקה')
+            }
+        } catch (e) {
+            showAlert('שגיאה', 'שגיאה במחיקת הספר')
+        }
+    });
   }
 
   const handleVisibilityClick = (book) => {
@@ -143,11 +146,11 @@ export default function AdminBooksPage() {
             ));
         } else {
             const data = await response.json();
-            alert(data.error || 'שגיאה בעדכון הסטטוס');
+            showAlert('שגיאה', data.error || 'שגיאה בעדכון הסטטוס');
         }
     } catch (e) {
         console.error(e)
-        alert('תקלה בתקשורת');
+        showAlert('שגיאה', 'תקלה בתקשורת');
     } finally {
         setIsUpdatingStatus(false)
         setShowNotifyDialog(false)
@@ -175,10 +178,10 @@ export default function AdminBooksPage() {
             setRenamingBook(null);
             setNewName('');
         } else {
-            alert('שגיאה בשינוי השם');
+            showAlert('שגיאה', 'שגיאה בשינוי השם');
         }
     } catch (e) {
-        alert('תקלה בתקשורת');
+        showAlert('שגיאה', 'תקלה בתקשורת');
     }
   };
 
@@ -205,11 +208,11 @@ export default function AdminBooksPage() {
             document.body.removeChild(link);
             window.URL.revokeObjectURL(url);
         } else {
-            alert('שגיאה בהפקת הקובץ: ' + (result.error || 'נסה שוב מאוחר יותר'));
+            showAlert('שגיאה', 'שגיאה בהפקת הקובץ: ' + (result.error || 'נסה שוב מאוחר יותר'));
         }
     } catch (e) {
         console.error('Download error:', e);
-        alert('תקלה בתקשורת עם השרת');
+        showAlert('שגיאה', 'תקלה בתקשורת עם השרת');
     }
   };
 
@@ -235,11 +238,11 @@ export default function AdminBooksPage() {
 
   const handleMergeSubmit = async () => {
       if (selectedBooksToMerge.length < 2) {
-          alert('יש לבחור לפחות 2 ספרים למיזוג');
+          showAlert('שים לב', 'יש לבחור לפחות 2 ספרים למיזוג');
           return;
       }
       if (!mergedBookName.trim()) {
-          alert('יש לבחור שם לספר המאוחד');
+          showAlert('שים לב', 'יש לבחור שם לספר המאוחד');
           return;
       }
 
@@ -260,18 +263,18 @@ export default function AdminBooksPage() {
           const result = await response.json();
 
           if (result.success) {
-              alert('הספרים מוזגו בהצלחה!');
+              showAlert('הצלחה', 'הספרים מוזגו בהצלחה!');
               setShowMergeDialog(false);
               setSelectedBooksToMerge([]);
               setMergedBookName('');
               setIsMergedHidden(false);
               loadBooks(); 
           } else {
-              alert(result.error || 'שגיאה במיזוג הספרים');
+              showAlert('שגיאה', result.error || 'שגיאה במיזוג הספרים');
           }
       } catch (e) {
           console.error(e);
-          alert('שגיאה בתקשורת עם השרת');
+          showAlert('שגיאה', 'שגיאה בתקשורת עם השרת');
       } finally {
           setIsMerging(false);
       }
@@ -838,4 +841,3 @@ export default function AdminBooksPage() {
     </>
   )
 }
-
