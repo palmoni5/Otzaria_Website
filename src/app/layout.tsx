@@ -5,6 +5,8 @@ import SessionProvider from "@/components/SessionProvider";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import VersionNotice from "@/components/VersionNotice";
 import ReminderGuard from "@/components/ReminderGuard"; 
+import { DialogProvider } from '@/components/DialogContext'
+
 
 const frankRuehl = localFont({
   src: "./fonts/FrankRuehlCLM-Medium.ttf",
@@ -14,7 +16,7 @@ const frankRuehl = localFont({
 
 export const metadata: Metadata = {
   title: "ספריית אוצריא",
-  description: "פלטפורמה משותפת לעריכה ושיתוף של ספרי קודש",
+  description: "פלטפורמה משותפת לעריכה ושיתוף",
   icons: {
     icon: [
       { url: "/logo.svg", type: "image/svg+xml" },
@@ -40,11 +42,13 @@ export default function RootLayout({
       <body className={`antialiased bg-background text-foreground font-sans ${frankRuehl.variable}`}>
         <ErrorBoundary>
           <SessionProvider>
-            <ReminderGuard>
-              {children}
-            </ReminderGuard>
-            
-            <VersionNotice />
+            <DialogProvider>
+              <ReminderGuard>
+                {children}
+              </ReminderGuard>
+              
+              <VersionNotice />
+            </DialogProvider>
           </SessionProvider>
         </ErrorBoundary>
       </body>

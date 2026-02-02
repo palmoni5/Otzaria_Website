@@ -13,6 +13,7 @@ import SettingsSidebar from '@/components/editor/SettingsSidebar'
 import FindReplaceDialog from '@/components/editor/modals/FindReplaceDialog'
 import SplitDialog from '@/components/editor/modals/SplitDialog'
 import InfoDialog from '@/components/editor/modals/InfoDialog'
+import { useDialog } from '@/components/DialogContext' // ייבוא ה-Hook החדש
 
 // Hooks
 import { useAutoSave } from '@/hooks/useAutoSave'
@@ -24,6 +25,7 @@ export default function EditPage() {
   const params = useParams()
   const bookPath = decodeURIComponent(params.bookPath)
   const pageNumber = parseInt(params.pageNumber)
+  const { showAlert, showConfirm } = useDialog()
 
   // Data State
   const [bookData, setBookData] = useState(null)
@@ -237,7 +239,7 @@ export default function EditPage() {
           if (!res.ok) throw new Error('Failed to save');
       } catch (err) {
           console.error('Failed to save searches to server', err);
-          alert('שגיאה בשמירת הנתונים בשרת. הנתונים נשמרו מקומית בלבד עד לריענון.');
+          showAlert('שגיאה', 'שגיאה בשמירת הנתונים בשרת. הנתונים נשמרו מקומית בלבד עד לריענון.');
       }
   };
 
@@ -328,7 +330,7 @@ export default function EditPage() {
         setContent(tempContent);
         handleAutoSaveWrapper(tempContent, leftColumn, rightColumn, false);
       }
-      alert('כל הפעולות השמורות בוצעו בהצלחה');
+      showAlert('הצלחה', 'כל הפעולות השמורות בוצעו בהצלחה');
     }
   };
 
@@ -339,19 +341,24 @@ export default function EditPage() {
   }
 
   const handleRemoveDigits = () => {
-    if (!window.confirm('האם אתה בטוח שברצונך למחוק את כל הספרות (0-9) מהטקסט?')) return;
-    const regex = /[0-9]/g; 
-    if (twoColumns) {
-      const newRight = rightColumn.replace(regex, '');
-      const newLeft = leftColumn.replace(regex, '');
-      setRightColumn(newRight);
-      setLeftColumn(newLeft);
-      handleAutoSaveWrapper(content, newLeft, newRight, true);
-    } else {
-      const newContent = content.replace(regex, '');
-      setContent(newContent);
-      handleAutoSaveWrapper(newContent, leftColumn, rightColumn, false);
-    }
+    showConfirm(
+        'ניקוי ספרות',
+        'האם אתה בטוח שברצונך למחוק את כל הספרות (0-9) מהטקסט?',
+        () => {
+            const regex = /[0-9]/g; 
+            if (twoColumns) {
+              const newRight = rightColumn.replace(regex, '');
+              const newLeft = leftColumn.replace(regex, '');
+              setRightColumn(newRight);
+              setLeftColumn(newLeft);
+              handleAutoSaveWrapper(content, newLeft, newRight, true);
+            } else {
+              const newContent = content.replace(regex, '');
+              setContent(newContent);
+              handleAutoSaveWrapper(newContent, leftColumn, rightColumn, false);
+            }
+        }
+    )
   };
 
   const handleAutoSaveWrapper = useCallback((newContent, left = leftColumn, right = rightColumn, two = twoColumns) => {
@@ -362,16 +369,16 @@ export default function EditPage() {
   }, [debouncedSave, bookPath, pageNumber, leftColumn, rightColumn, twoColumns, isContentSplit, rightColumnName, leftColumnName]);
 
   const handleFinishClick = useCallback(() => {
-    if (!session) return alert('שגיאה: אינך מחובר');
+    if (!session) return showAlert('שגיאה', 'אינך מחובר למערכת');
     handleAutoSaveWrapper(content, leftColumn, rightColumn, twoColumns);
     setShowUploadDialog(true);
-  }, [session, content, leftColumn, rightColumn, twoColumns, handleAutoSaveWrapper]);
+  }, [session, content, leftColumn, rightColumn, twoColumns, handleAutoSaveWrapper, showAlert]);
 
   const completePageLogic = async () => {
     try {
       const safeBookId = bookData?.id || bookData?._id;
       const safePageId = pageData?.id || pageData?._id;
-      if (!safePageId || !safeBookId) return alert('שגיאה מזהים חסרים');
+      if (!safePageId || !safeBookId) return showAlert('שגיאה', 'מזהים חסרים');
 
       const response = await fetch(`/api/book/complete-page`, {
         method: 'POST',
@@ -380,17 +387,17 @@ export default function EditPage() {
       });
       const result = await response.json();
       if (result.success) router.push(`/library/book/${encodeURIComponent(bookPath)}`);
-      else alert(`❌ שגיאה מהשרת: ${result.error}`);
+      else showAlert('שגיאה', `שגיאה מהשרת: ${result.error}`);
     } catch (error) {
       console.error('Error completing page:', error);
-      alert('❌ שגיאה בסימון העמוד כהושלם');
+      showAlert('שגיאה', 'שגיאה בסימון העמוד כהושלם');
     }
   };
 
   const handleUploadConfirm = async () => {
     try {
       let textContent = twoColumns ? `${rightColumnName}:\n${rightColumn}\n\n${leftColumnName}:\n${leftColumn}` : content;
-      if (!textContent.trim()) return alert('❌ העמוד ריק');
+      if (!textContent.trim()) return showAlert('שגיאה', 'העמוד ריק');
 
       const cleanBookName = bookPath.replace(/[^a-zA-Z0-9א-ת]/g, '_'); 
       const fileName = `${cleanBookName}_page_${pageNumber}.txt`;
@@ -407,14 +414,14 @@ export default function EditPage() {
       const result = await response.json();
 
       if (result.success) {
-        alert('✅ הטקסט הועלה בהצלחה! מסמן כהושלם.');
+        showAlert('הצלחה', 'הטקסט הועלה בהצלחה! מסמן כהושלם.');
         await completePageLogic(); 
       } else {
-        alert(`❌ שגיאה בהעלאה: ${result.error || 'שגיאה לא ידועה'}`);
+        showAlert('שגיאה', `שגיאה בהעלאה: ${result.error || 'שגיאה לא ידועה'}`);
       }
     } catch (error) {
       console.error('Error uploading text:', error);
-      alert('❌ שגיאה בתהליך ההעלאה');
+      showAlert('שגיאה', 'שגיאה בתהליך ההעלאה');
     }
   };
 
@@ -493,7 +500,7 @@ export default function EditPage() {
   }
 
   const handleDownloadImage = async () => {
-    if (!pageData?.thumbnail) return alert('אין תמונה להורדה');
+    if (!pageData?.thumbnail) return showAlert('שגיאה', 'אין תמונה להורדה');
     try {
       const response = await fetch(pageData.thumbnail);
       const blob = await response.blob();
@@ -524,7 +531,7 @@ export default function EditPage() {
     const textToFind = overrideFind !== null ? overrideFind : findText;
     const textToReplace = overrideReplace !== null ? overrideReplace : replaceText;
 
-    if (!textToFind) return alert('הזן טקסט לחיפוש');
+    if (!textToFind) return showAlert('שגיאה', 'הזן טקסט לחיפוש');
     
     const processPattern = (str) => str.replaceAll('^13', '\n');
     
@@ -562,8 +569,8 @@ export default function EditPage() {
         handleAutoSaveWrapper(newContent, leftColumn, rightColumn, false);
       }
     }
-    if (totalOccurrences > 0) alert(`ההחלפה בוצעה בהצלחה! הוחלפו ${totalOccurrences} מופעים.`);
-    else alert('לא נמצאו תוצאות התואמות לחיפוש.');
+    if (totalOccurrences > 0) showAlert('הצלחה', `ההחלפה בוצעת בהצלחה! הוחלפו ${totalOccurrences} מופעים.`);
+    else showAlert('לידיעתך', 'לא נמצאו תוצאות התואמות לחיפוש.');
   };
 
   const insertTag = useCallback((tag) => {
@@ -654,7 +661,7 @@ export default function EditPage() {
   }, []);
 
   const handleOCR = async () => {
-    if (!selectionRect) return alert('בחר אזור')
+    if (!selectionRect) return showAlert('שגיאה', 'בחר אזור')
     cancelOCRRef.current = false
     setIsOCRBlocking(true)
 
@@ -692,7 +699,7 @@ export default function EditPage() {
         if (cancelOCRRef.current) return
         if (!text) {
              setIsOCRBlocking(false)
-             return alert('לא זוהה טקסט')
+             return showAlert('שגיאה', 'לא זוהה טקסט')
         }
         
         if (twoColumns) {
@@ -708,7 +715,7 @@ export default function EditPage() {
         setIsSelectionMode(false)
     } catch (e) {
         console.error(e)
-        if (!cancelOCRRef.current) alert('שגיאה ב-OCR: ' + e.message)
+        if (!cancelOCRRef.current) showAlert('שגיאה', 'שגיאה ב-OCR: ' + e.message)
     } finally {
         setIsOCRBlocking(false)
     }
@@ -805,8 +812,8 @@ export default function EditPage() {
           >
             <ImagePanel 
               thumbnailUrl={pageData?.thumbnail} pageNumber={pageNumber}
-              setImageZoom={setImageZoom}
-              imageZoom={imageZoom}
+              imageZoom={imageZoom} 
+              setImageZoom={setImageZoom} // תוקן: העברת פונקציית העדכון
               isSelectionMode={isSelectionMode}
               selectionStart={selectionStart} selectionEnd={selectionEnd}
               selectionRect={selectionRect}
@@ -847,7 +854,7 @@ export default function EditPage() {
         userApiKey={userApiKey} setUserApiKey={setUserApiKey}
         selectedModel={selectedModel} setSelectedModel={setSelectedModel}
         customPrompt={customPrompt} setCustomPrompt={setCustomPrompt}
-        saveSettings={() => { localStorage.setItem('gemini_api_key', userApiKey); alert('נשמר'); }}
+        saveSettings={() => { localStorage.setItem('gemini_api_key', userApiKey); showAlert('מידע', 'נשמר'); }}
         resetPrompt={() => setCustomPrompt('The text is in Hebrew, written in Rashi script...')}
       />
       
