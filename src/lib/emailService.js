@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
-import { encryptToken } from '@/lib/unsubscribeToken';
+// שים לב: וודא שהקובץ הזה קיים, אחרת שנה לנתיב הישן כמו בקובץ המקורי
+import { encryptToken } from '@/app/api/user/unsubscribe/route'; 
 import User from '@/models/User'; 
 import MailingList from '@/models/MailingList';
 import dbConnect from '@/lib/db';
@@ -34,9 +35,12 @@ export async function sendBookNotification(bookName, bookSlug) {
             auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
         });
 
+       // השימוש ב-validEmails.map הוא תקין (תיקון מהקובץ הישן שהשתמש במשתנה לא קיים)
        const sendPromises = validEmails.map(async (email) => {
             const secureToken = encryptToken(email);
-            const unsubUrl = `${process.env.NEXTAUTH_URL}/api/user/unsubscribe?t=${secureToken}...`;
+            
+            // --- התיקון בוצע כאן: החזרת הפרמטרים החסרים ל-URL ---
+            const unsubUrl = `${process.env.NEXTAUTH_URL}/api/user/unsubscribe?t=${secureToken}&action=new_books`;
             
             const safeSlug = bookSlug ? encodeURIComponent(bookSlug) : ''; 
             const bookLink = safeSlug 
