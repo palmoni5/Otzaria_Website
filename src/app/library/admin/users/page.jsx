@@ -45,34 +45,39 @@ export default function AdminUsersPage() {
   }
 
   const handleUpdateUser = async () => {
-    const originalUser = users.find(u => u._id === editingUser)
-    
-    if (originalUser && formData.email !== originalUser.email) {
-        const confirmed = confirm(
-            "⚠️ שים לב: שינוי כתובת האימייל יגרום לביטול אימות המשתמש (V) והוא יידרש לאמת את המייל החדש.\n\nהאם אתה בטוח שברצונך להמשיך?"
-        )
-        if (!confirmed) return 
-    }
+    const originalUser = users.find(u => u._id === editingUser);
 
-    try {
-      const response = await fetch('/api/admin/users', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: editingUser, ...formData })
-      })
-      
-      if (response.ok) {
-        setEditingUser(null)
-        loadUsers()
-        showAlert('הצלחה!', 'המשתמש עודכן בהצלחה')
+    const performUpdate = async () => {
+          try {
+              const response = await fetch('/api/admin/users', {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ userId: editingUser, ...formData })
+              });
+            
+              if (response.ok) {
+                  setEditingUser(null);
+                  loadUsers();
+                  showAlert('הצלחה!', 'המשתמש עודכן בהצלחה');
+              } else {
+                  const data = await response.json();
+                  showAlert('שגיאה', data.error || 'שגיאה בעדכון');
+              }
+          } catch (e) {
+              showAlert('שגיאה', 'שגיאה בתקשורת');
+          }
+      };
+
+      if (originalUser && formData.email !== originalUser.email) {
+          showConfirm(
+              'שינוי כתובת אימייל',
+              "⚠️ שים לב: שינוי כתובת האימייל יגרום לביטול אימות המשתמש (V) והוא יידרש לאמת את המייל החדש.\n\nהאם אתה בטוח שברצונך להמשיך?",
+              performUpdate
+          );
       } else {
-        const data = await response.json()
-        showAlert('שגיאה', 'שגיאה בעדכון')
+          await performUpdate();
       }
-    } catch (e) {
-      showAlert('שגיאה', 'שגיאה בתקשורת')
-    }
-  }
+  };
 
   const handleDeleteUser = async (userId) => {
     if (!confirm('למחוק את המשתמש?')) return
