@@ -36,7 +36,7 @@ export async function sendBookNotification(bookName, bookSlug) {
 
        const sendPromises = validEmails.map(async (email) => {
             const secureToken = encryptToken(email);
-            const unsubUrl = `${process.env.NEXTAUTH_URL}/api/mailing-list/unsubscribe?t=${secureToken}`;
+            const unsubUrl = `${process.env.NEXTAUTH_URL}/api/user/unsubscribe?t=${secureToken}...`;
             
             const safeSlug = bookSlug ? encodeURIComponent(bookSlug) : ''; 
             const bookLink = safeSlug 
