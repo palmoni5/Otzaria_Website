@@ -33,51 +33,52 @@ export function useOCR() {
     return result.text
   }
 
-const performTesseractOCR = async (croppedBlob, onProgress) => {
-    const Tesseract = (await import('tesseract.js')).default
-    
-    // יצירת Worker עם הגדרות מותאמות אישית
+  const performTesseractOCR = async (croppedBlob, onProgress) => {
+    const Tesseract = (await import('tesseract.js')).default;
+
+    // 1. יוצרים את ה-Worker ללא ה-logger בשלב הראשון כדי למנוע את שגיאת ה-Clone
     const worker = await Tesseract.createWorker({
-      // מפנה לתיקייה public/tessdata בפרויקט שלך
-      // window.location.origin מבטיח שזה יעבוד גם ב-localhost וגם בייצור
+      // הנתיב לתיקיית המודלים בתוך public
       langPath: window.location.origin + '/tessdata', 
       
-      // הגדר את זה ל-false אלא אם כן כיווצת את הקבצים ל-.gz בעצמך
-      gzip: false,
+      // הגדרת ה-Gzip כ-false כי המודלים שהורדת הם קבצי .traineddata רגילים
+      gzip: false, 
       
-      logger: (m) => {
-        if (m.status === 'recognizing text' && onProgress) {
-          onProgress(Math.round(m.progress * 100))
-        }
-      }
-    })
+      // במקום להעביר את ה-logger כאן, אנחנו נגדיר אותו בשלב הבא אם הגרסה תומכת,
+      // או שפשוט נוותר עליו אם הוא גורם לשגיאות קריטיות.
+    });
 
     try {
-      // טעינת שתי השפות במקביל באמצעות הסימן +
-      await worker.loadLanguage('heb+heb_rashi')
-      
-      // אתחול המנוע עם שתי השפות
-      await worker.initialize('heb+heb_rashi')
+      // 2. הגדרת הלוגר בצורה בטוחה יותר (אם זה עדיין זורק שגיאה, אפשר למחוק את השורה הזו)
+      if (onProgress) {
+        worker.setLogger((m) => {
+          if (m.status === 'recognizing text') {
+            onProgress(Math.round(m.progress * 100));
+          }
+        });
+      }
 
-      // הגדרת פרמטרים לשיפור דיוק (אופציונלי)
-      // await worker.setParameters({
-      //   tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
-      // });
+      // 3. טעינת השפות (עברית + רש"י)
+      await worker.loadLanguage('heb+heb_rashi');
+      
+      // 4. אתחול המנוע
+      await worker.initialize('heb+heb_rashi');
 
-      const result = await worker.recognize(croppedBlob)
+      // 5. ביצוע ה-OCR
+      const { data: { text } } = await worker.recognize(croppedBlob);
       
-      await worker.terminate() // סגירת ה-Worker כדי לשחרר זיכרון
-      
-      return result.data.text.trim()
-      
+      // 6. סגירת ה-Worker
+      await worker.terminate();
+
+      return text.trim();
+
     } catch (error) {
-      // במקרה של שגיאה, נסגור את ה-Worker ונזרוק שגיאה
-      await worker.terminate()
-      console.error("Tesseract Error:", error)
-      throw new Error("שגיאה בטעינת המודלים או בזיהוי הטקסט")
+      console.error('Tesseract Error:', error);
+      if (worker) await worker.terminate();
+      throw new Error('נכשל בזיהוי טקסט (Tesseract)');
     }
-  }
-  
+  };
+
   // בתוך ה-Hook useOCR
   const performOCRWin = async (croppedBlob) => {
     // 1. יוצרים טופס וירטואלי
