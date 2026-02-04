@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import connectDB from '@/lib/db';
 import SystemConfig from '@/models/SystemConfig';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route'; 
 
 const CONFIG_KEY = 'global_editor_instructions';
 
@@ -9,7 +11,6 @@ export async function GET() {
     await connectDB();
 
     const config = await SystemConfig.findOne({ key: CONFIG_KEY }).lean();
-
     const instructions = config?.value || { sections: [] };
 
     return NextResponse.json({
@@ -28,6 +29,11 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session || session.user?.role !== 'admin') {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
     await connectDB();
     
     const body = await request.json();
