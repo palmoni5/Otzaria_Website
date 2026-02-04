@@ -59,3 +59,4 @@ empty-uploads-report-1767610989868.json
 sample.json
 Otzaria_Website.xml
 .env.local
+public/tessdata/*

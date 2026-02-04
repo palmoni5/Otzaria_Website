@@ -33,21 +33,51 @@ export function useOCR() {
     return result.text
   }
 
-  const performTesseractOCR = async (croppedBlob, onProgress) => {
+const performTesseractOCR = async (croppedBlob, onProgress) => {
     const Tesseract = (await import('tesseract.js')).default
-    const result = await Tesseract.recognize(
-      croppedBlob,
-      'heb',
-      {
-        logger: (m) => {
-          if (m.status === 'recognizing text' && onProgress) {
-            onProgress(Math.round(m.progress * 100))
-          }
+    
+    // יצירת Worker עם הגדרות מותאמות אישית
+    const worker = await Tesseract.createWorker({
+      // מפנה לתיקייה public/tessdata בפרויקט שלך
+      // window.location.origin מבטיח שזה יעבוד גם ב-localhost וגם בייצור
+      langPath: window.location.origin + '/tessdata', 
+      
+      // הגדר את זה ל-false אלא אם כן כיווצת את הקבצים ל-.gz בעצמך
+      gzip: false,
+      
+      logger: (m) => {
+        if (m.status === 'recognizing text' && onProgress) {
+          onProgress(Math.round(m.progress * 100))
         }
       }
-    )
-    return result.data.text.trim()
+    })
+
+    try {
+      // טעינת שתי השפות במקביל באמצעות הסימן +
+      await worker.loadLanguage('heb+heb_rashi')
+      
+      // אתחול המנוע עם שתי השפות
+      await worker.initialize('heb+heb_rashi')
+
+      // הגדרת פרמטרים לשיפור דיוק (אופציונלי)
+      // await worker.setParameters({
+      //   tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK,
+      // });
+
+      const result = await worker.recognize(croppedBlob)
+      
+      await worker.terminate() // סגירת ה-Worker כדי לשחרר זיכרון
+      
+      return result.data.text.trim()
+      
+    } catch (error) {
+      // במקרה של שגיאה, נסגור את ה-Worker ונזרוק שגיאה
+      await worker.terminate()
+      console.error("Tesseract Error:", error)
+      throw new Error("שגיאה בטעינת המודלים או בזיהוי הטקסט")
+    }
   }
+  
   // בתוך ה-Hook useOCR
   const performOCRWin = async (croppedBlob) => {
     // 1. יוצרים טופס וירטואלי
