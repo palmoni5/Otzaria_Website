@@ -37,7 +37,7 @@ export default function EditPage() {
   const [rightColumn, setRightColumn] = useState('')
   const [twoColumns, setTwoColumns] = useState(false)
   const [activeTextarea, setActiveTextarea] = useState(null)
-  const [selectedFont, setSelectedFont] = useState('monospace')
+  const [selectedFont, setSelectedFont] = useState('Times New Roman')
    
   const [imageZoom, setImageZoom] = useState(100)
   const [rotation, setRotation] = useState(0)
@@ -938,4 +938,5 @@ function UploadDialog({ pageNumber, onConfirm, onCancel }) {
       </div>
     </div>
   )
+
 }
