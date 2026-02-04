@@ -208,9 +208,9 @@ export default function EditorToolbar({
 
       <div className="relative">
         <select value={selectedFont} onChange={(e) => setSelectedFont(e.target.value)} className="appearance-none pl-2 pr-6 h-7 bg-white border border-gray-200 rounded-md text-[10px] font-medium focus:outline-none hover:bg-gray-50 cursor-pointer w-24">
+          <option value="'Times New Roman'">Times New Roman</option>
           <option value="monospace">Monospace</option>
           <option value="Arial">Arial</option>
-          <option value="'Times New Roman'">Times New Roman</option>
           <option value="'Courier New'">Courier New</option>
           <option value="Georgia">Georgia</option>
           <option value="Verdana">Verdana</option>
