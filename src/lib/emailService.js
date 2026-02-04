@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { encryptToken } from '@/app/api/user/unsubscribe/route';
+import { encryptToken } from '@/app/api/user/unsubscribe/route'; 
 import User from '@/models/User'; 
 import MailingList from '@/models/MailingList';
 import dbConnect from '@/lib/db';
@@ -7,10 +7,12 @@ import dbConnect from '@/lib/db';
 export async function sendBookNotification(bookName, bookSlug) {
     try {
         await dbConnect();
+        
         const list = await MailingList.findOne({ listName: 'new_books_subscribers' });
 
         if (!list || !list.emails || list.emails.length === 0) {
-            return { sent: false };
+            console.log('No subscribers found in mailing list.');
+            return { sent: false, reason: 'empty_list' };
         }
 
         const validUsers = await User.find({
@@ -19,7 +21,8 @@ export async function sendBookNotification(bookName, bookSlug) {
         }).select('email');
 
         if (validUsers.length === 0) {
-            return { sent: false, error: 'No valid verified users found in the subscription list' };
+            console.log('No valid verified users found.');
+            return { sent: false, error: 'No valid verified users found' };
         }
 
         const validEmails = validUsers.map(u => u.email);
@@ -31,17 +34,21 @@ export async function sendBookNotification(bookName, bookSlug) {
             auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
         });
 
-       const sendPromises = finalToSendList.map(async (email) => {
+       const sendPromises = validEmails.map(async (email) => {
             const secureToken = encryptToken(email);
+            
             const unsubUrl = `${process.env.NEXTAUTH_URL}/api/user/unsubscribe?t=${secureToken}&action=new_books`;
             
-            const safeSlug = encodeURIComponent(bookSlug); 
+            const safeSlug = bookSlug ? encodeURIComponent(bookSlug) : ''; 
+            const bookLink = safeSlug 
+                ? `${process.env.NEXTAUTH_URL}/library/book/${safeSlug}`
+                : `${process.env.NEXTAUTH_URL}/library`;
 
             const emailHtml = `
             <div dir="rtl" style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 40px; text-align: center;">
                 <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden;">
                     <div style="background-color: #ffffff; padding: 20px; border-bottom: 3px solid #d4a373;">
-                        <img src="https://www.otzaria.org/logo.png" alt="Otzaria Logo" style="width: 120px; height: auto;">
+                        <img src="${process.env.NEXTAUTH_URL}/logo.png" alt="Otzaria Logo" style="width: 120px; height: auto;">
                         <h2 style="color: #d4a373; font-size: 20px; margin: 5px 0 0 0; font-weight: bold;">ספריית אוצריא</h2>
                     </div>
                     <div style="padding: 30px; color: #333333;">
@@ -52,7 +59,7 @@ export async function sendBookNotification(bookName, bookSlug) {
                             נוסף כעת לספרייה וזמין לעריכה.
                         </p>
                         <div style="margin: 30px 0;">
-                            <a href="${process.env.NEXTAUTH_URL}/library/book/${safeSlug}" style="background-color: #d4a373; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
+                            <a href="${bookLink}" style="background-color: #d4a373; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 16px;">
                                 כנס לספרייה לעריכה
                             </a>
                         </div>
@@ -65,23 +72,25 @@ export async function sendBookNotification(bookName, bookSlug) {
                 </div>
             </div>
             `;
+            
             return transporter.sendMail({
                 from: {
                     name: "ספריית אוצריא",
                     address: process.env.SMTP_FROM
                 },
-                to: email, // שליחה ישירה לכל אחד
+                to: email, 
                 replyTo: process.env.SMTP_REPLY_TO || process.env.SMTP_FROM,
                 subject: `📚 ספר חדש בספרייה: ${bookName}`,
                 headers: {
                     'List-Unsubscribe': `<${unsubUrl}>`,
                     'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
                 },
-                html: `${emailHtml}`
+                html: emailHtml
             });
         });
 
         await Promise.allSettled(sendPromises);
+        console.log(`Sent notifications to ${validEmails.length} users.`);
         return { sent: true, count: validEmails.length };
 
     } catch (error) {

@@ -1,16 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 
 export default function AdminPagesPage() {
   const [pages, setPages] = useState([])
   const [loading, setLoading] = useState(true)
   const [filters, setFilters] = useState({ status: '', book: '', userId: '' })
-  const [editingPage, setEditingPage] = useState(null) // ID של העמוד הנערך
-  const [editForm, setEditForm] = useState({}) // נתוני העריכה
+  const [editingPage, setEditingPage] = useState(null)
+  const [editForm, setEditForm] = useState({})
   
-  // נתונים לרשימות בחירה (לקוחים מהדפים שנטענו)
   const [booksList, setBooksList] = useState([])
   const [usersList, setUsersList] = useState([])
 
@@ -20,7 +18,7 @@ export default function AdminPagesPage() {
       const params = new URLSearchParams()
       if (filters.status) params.append('status', filters.status)
       if (filters.book) params.append('book', filters.book)
-      if (filters.userId) params.append('userId', filters.userId) // אם ה-API תומך
+      if (filters.userId) params.append('userId', filters.userId)
       
       const res = await fetch(`/api/admin/pages/list?${params}`)
       const data = await res.json()
@@ -28,7 +26,6 @@ export default function AdminPagesPage() {
       if (data.success) {
         setPages(data.pages)
         
-        // חילוץ רשימות ייחודיות לפילטרים
         const books = [...new Set(data.pages.map(p => p.bookName))].sort()
         setBooksList(books)
         
@@ -104,6 +101,33 @@ export default function AdminPagesPage() {
       }
   }
 
+  const handleDownload = (pageId, fileName) => {
+      if (!pageId) {
+          alert('שגיאה: מזהה עמוד חסר');
+          return;
+      }
+      const link = document.createElement('a')
+      link.href = `/api/admin/pages/download/${pageId}`
+      link.download = fileName || 'page.txt'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+  }
+
+  const handleDownloadAll = () => {
+      const params = new URLSearchParams()
+      if (filters.status) params.append('status', filters.status)
+      if (filters.book) params.append('book', filters.book)
+      if (filters.userId) params.append('userId', filters.userId)
+      
+      const link = document.createElement('a')
+      link.href = `/api/admin/pages/download-batch?${params.toString()}`
+      link.download = 'all-pages.txt'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+  }
+
   return (
     <div className="glass-strong p-6 rounded-xl animate-in fade-in slide-in-from-bottom-4 duration-500">
       <h2 className="text-2xl font-bold mb-6 text-on-surface flex items-center gap-2">
@@ -111,12 +135,11 @@ export default function AdminPagesPage() {
           ניהול עמודים
       </h2>
       
-      {/* פילטרים */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6 bg-surface/50 p-4 rounded-xl border border-surface-variant">
           <div className="flex flex-col">
               <label className="text-sm font-bold text-gray-700 mb-1">סטטוס</label>
               <select 
-                className="border p-2 rounded-lg bg-white focus:ring-2 focus:ring-primary outline-none"
+                className="border p-2 rounded-lg bg-white focus:ring-2 focus:ring-primary outline-none h-[42px]"
                 value={filters.status}
                 onChange={e => setFilters({...filters, status: e.target.value})}
               >
@@ -130,7 +153,7 @@ export default function AdminPagesPage() {
           <div className="flex flex-col">
               <label className="text-sm font-bold text-gray-700 mb-1">ספר</label>
               <select 
-                className="border p-2 rounded-lg bg-white focus:ring-2 focus:ring-primary outline-none"
+                className="border p-2 rounded-lg bg-white focus:ring-2 focus:ring-primary outline-none h-[42px]"
                 value={filters.book}
                 onChange={e => setFilters({...filters, book: e.target.value})}
               >
@@ -144,7 +167,7 @@ export default function AdminPagesPage() {
            <div className="flex flex-col">
               <label className="text-sm font-bold text-gray-700 mb-1">משתמש</label>
               <select 
-                className="border p-2 rounded-lg bg-white focus:ring-2 focus:ring-primary outline-none"
+                className="border p-2 rounded-lg bg-white focus:ring-2 focus:ring-primary outline-none h-[42px]"
                 value={filters.userId}
                 onChange={e => setFilters({...filters, userId: e.target.value})}
               >
@@ -155,13 +178,23 @@ export default function AdminPagesPage() {
               </select>
           </div>
           
-          <div className="flex items-end">
+          <div className="flex items-end gap-2 w-full">
               <button 
                 onClick={() => setFilters({ status: '', book: '', userId: '' })}
-                className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium px-4 rounded-lg transition-colors flex items-center justify-center gap-2 h-[42px] border border-gray-300"
+                title="נקה סינון והצג את כל העמודים"
               >
                   <span className="material-symbols-outlined text-sm">filter_alt_off</span>
-                  נקה סינון
+                  <span className="hidden xl:inline">נקה סינון</span>
+              </button>
+              
+              <button 
+                onClick={handleDownloadAll}
+                className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-medium px-4 rounded-lg transition-colors flex items-center justify-center gap-2 h-[42px] shadow-sm"
+                title="הורד את כל העמודים המוצגים כעת כקובץ טקסט"
+              >
+                  <span className="material-symbols-outlined text-sm">download</span>
+                  <span className="hidden xl:inline">הכל</span>
               </button>
           </div>
       </div>
@@ -181,6 +214,8 @@ export default function AdminPagesPage() {
               <tbody>
                   {pages.map((page, idx) => {
                       const isEditing = editingPage === `${page.bookName}-${page.number}`
+                      const pageId = page._id || page.id; 
+                      
                       return (
                       <tr key={idx} className="border-b hover:bg-gray-50 transition-colors">
                           <td className="p-4 font-medium">{page.bookName}</td>
@@ -250,6 +285,15 @@ export default function AdminPagesPage() {
                                       )}
                                   </>
                               )}
+
+                              <button 
+                                onClick={() => handleDownload(pageId, `${page.bookName}-${page.number}.txt`)}
+                                className="text-teal-600 hover:bg-teal-50 p-1.5 rounded-lg transition-colors"
+                                title="הורד טקסט"
+                              >
+                                  <span className="material-symbols-outlined">download</span>
+                              </button>
+                              
                           </td>
                       </tr>
                   )})}
