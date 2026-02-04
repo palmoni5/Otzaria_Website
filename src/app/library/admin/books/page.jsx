@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import AddBookDialog from '@/components/AddBookDialog'
 import EditBookInfoDialog from '@/components/EditBookInfoDialog'
+import EditGlobalInstructionsDialog from '@/components/EditGlobalInstructionsDialog'
 import { useDialog } from '@/components/DialogContext'
 
 export default function AdminBooksPage() {
@@ -32,6 +33,11 @@ export default function AdminBooksPage() {
   const [showSubscribersModal, setShowSubscribersModal] = useState(false)
   const [subscribersList, setSubscribersList] = useState([])
   const [isLoadingSubscribers, setIsLoadingSubscribers] = useState(false)
+
+  const [showGlobalInstructionsDialog, setShowGlobalInstructionsDialog] = useState(false)
+  const [globalInstructionsData, setGlobalInstructionsData] = useState({ sections: [] })
+  const [isLoadingInstructions, setIsLoadingInstructions] = useState(false)
+  const [isSavingInstructions, setIsSavingInstructions] = useState(false)
 
   const loadBooks = async () => {
     try {
@@ -280,6 +286,47 @@ export default function AdminBooksPage() {
       }
   };
 
+  const handleOpenGlobalInstructions = async () => {
+    setShowGlobalInstructionsDialog(true);
+    setIsLoadingInstructions(true);
+    try {
+        const res = await fetch('/api/admin/books/global-instructions');
+        const data = await res.json();
+        if (data.success && data.instructions) {
+            setGlobalInstructionsData(data.instructions);
+        } else {
+            setGlobalInstructionsData({ sections: [{ title: 'הנחיות כלליות', items: [] }] });
+        }
+    } catch (error) {
+        showAlert('שגיאה', 'לא ניתן לטעון הנחיות');
+    } finally {
+        setIsLoadingInstructions(false);
+    }
+  };
+
+  const handleSaveGlobalInstructions = async (newData) => {
+    setIsSavingInstructions(true);
+    try {
+        const response = await fetch('/api/admin/books/global-instructions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ instructions: newData })
+        });
+
+        if (response.ok) {
+            showAlert('הצלחה', 'ההנחיות עודכנו בהצלחה');
+            setGlobalInstructionsData(newData);
+            setShowGlobalInstructionsDialog(false);
+        } else {
+            showAlert('שגיאה', 'שגיאה בשמירת הנתונים');
+        }
+    } catch (error) {
+        showAlert('שגיאה', 'תקלה בתקשורת');
+    } finally {
+        setIsSavingInstructions(false);
+    }
+};
+
   const filteredBooks = books.filter(book => {  
     const matchesSearch = book.name.toLowerCase().includes(searchTerm.toLowerCase());  
     if (!matchesSearch) return false;  
@@ -335,6 +382,17 @@ export default function AdminBooksPage() {
                     <div className="flex flex-col items-start leading-tight">
                         <span className="font-bold">רשומים להתראות</span>
                         <span className="text-[10px] opacity-90">ספרים חדשים</span>
+                    </div>
+                </button>
+
+                <button
+                    onClick={handleOpenGlobalInstructions}
+                    className="flex items-center gap-2 px-4 py-2 bg-slate-600 text-white rounded-xl hover:bg-slate-700 transition-all shadow-md w-full md:w-auto justify-center"
+                >
+                    <span className="material-symbols-outlined shrink-0">gavel</span>
+                    <div className="flex flex-col items-start leading-tight">
+                        <span className="font-bold">הנחיות גלובליות</span>
+                        <span className="text-[10px] opacity-80">מופיע בכל הספרים</span>
                     </div>
                 </button>
 
@@ -838,6 +896,14 @@ export default function AdminBooksPage() {
                 </div>
             </div>
         )}
+
+        <EditGlobalInstructionsDialog
+            isOpen={showGlobalInstructionsDialog}
+            onClose={() => setShowGlobalInstructionsDialog(false)}
+            initialData={globalInstructionsData}
+            onSave={handleSaveGlobalInstructions}
+            isSaving={isSavingInstructions}
+        />
     </>
   )
 }

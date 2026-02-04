@@ -1,16 +1,17 @@
 'use client'
 
-import { useState, useRef, useEffect, Suspense } from 'react' // הווסף Suspense
-import { signIn } from 'next-auth/react'
+import { useState, useRef, useEffect, Suspense } from 'react'
+import { signIn, useSession, getSession } from 'next-auth/react' // הוספנו את getSession
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 
-// 1. צור רכיב פנימי שמכיל את הלוגיקה שמשתמשת ב-useSearchParams
 function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const passwordRef = useRef(null)
+  
+  const { status } = useSession()
 
   const [formData, setFormData] = useState({
     identifier: '',
@@ -18,6 +19,29 @@ function LoginContent() {
   })
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const checkSession = async () => {
+      const session = await getSession()
+      if (session) {
+        router.refresh() 
+        router.replace('/library/dashboard')
+      }
+    }
+
+    checkSession()
+
+    const intervalId = setInterval(checkSession, 5000)
+
+    return () => clearInterval(intervalId)
+  }, [router])
+
+  // בדיקה רגילה של ה-Hook (גיבוי נוסף)
+  useEffect(() => {
+    if (status === 'authenticated') {
+      router.replace('/library/dashboard')
+    }
+  }, [status, router])
 
   useEffect(() => {
     const errorType = searchParams.get('error')
@@ -52,15 +76,24 @@ function LoginContent() {
 
       if (result?.error) {
         setError('שם משתמש או סיסמה שגויים')
+        setLoading(false)
       } else {
         router.refresh()
-        router.push('/library/dashboard')
+        router.replace('/library/dashboard')
       }
     } catch {
       setError('שגיאה בהתחברות')
-    } finally {
       setLoading(false)
     }
+  }
+
+  // תצוגת טעינה אם המצב הוא Loading או שאנחנו כבר מזוהים
+  if (status === 'loading' || status === 'authenticated') {
+    return (
+      <div className="w-full max-w-md flex justify-center items-center min-h-[400px]">
+        <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
+      </div>
+    )
   }
 
   return (
@@ -175,7 +208,6 @@ function LoginContent() {
   )
 }
 
-// 2. רכיב ה-Page הראשי שעוטף ב-Suspense
 export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12 bg-gradient-to-bl from-primary-container via-background to-secondary-container">

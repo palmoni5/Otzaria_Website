@@ -52,20 +52,21 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (status === 'unauthenticated') {
-      router.push('/library/auth/login')
+      router.push('/library/auth/login');
     } else if (status === 'authenticated') {
-      loadUserStats()
-      loadMyMessages()
-      setNewEmail(session?.user?.email || '')
+      const isFirstTime = stats.myPages === 0 && stats.recentActivity.length === 0;
+      loadUserStats(isFirstTime); 
+      loadMyMessages();
+      setNewEmail(session?.user?.email || '');
     }
-  }, [status, router, session])
+  }, [status, router, session]);
 
-  const loadUserStats = async () => {
+  const loadUserStats = async (isInitialLoad = false) => {
     try {
-      setLoading(true)
-      const response = await fetch('/api/user/stats')
-      const result = await response.json()
-      
+      if (isInitialLoad) setLoading(true);
+      const response = await fetch('/api/user/stats');
+      const result = await response.json();
+    
       if (result.success) {
         setStats({
           myPages: result.stats?.myPages || 0,
@@ -73,14 +74,14 @@ export default function DashboardPage() {
           inProgressPages: result.stats?.inProgressPages || 0,
           points: result.stats?.points || 0,
           recentActivity: result.stats?.recentActivity || []
-        })
+        });
       }
     } catch (error) {
-      console.error('Error loading stats:', error)
+      console.error('Error loading stats:', error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const loadMyMessages = async () => {
     try {

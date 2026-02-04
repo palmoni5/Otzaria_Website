@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useParams } from 'next/navigation'
 
@@ -31,6 +31,7 @@ export default function EditPage() {
   const [pageData, setPageData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [globalInstructions, setGlobalInstructions] = useState(null);
 
   const [content, setContent] = useState('')
   const [leftColumn, setLeftColumn] = useState('')
@@ -38,6 +39,27 @@ export default function EditPage() {
   const [twoColumns, setTwoColumns] = useState(false)
   const [activeTextarea, setActiveTextarea] = useState(null)
   const [selectedFont, setSelectedFont] = useState('Times New Roman')
+  const allInstructions = useMemo(() => {
+      const globalRawSections = globalInstructions?.sections || [];
+      const globalData = {
+          title: 'הנחיות גלובליות',
+          sections: globalRawSections
+      };
+
+      const bookInfo = bookData?.editingInfo || {};
+      const bookSections = bookInfo.sections || [];
+      
+      // שינינו את השם כאן ל-bookInstData כדי למנוע התנגשות עם ה-state של bookData
+      const bookInstData = {
+          title: bookInfo.title || 'הנחיות עריכה לספר זה',
+          sections: bookSections
+      };
+
+      return {
+          bookInstructions: bookInstData,
+          globalInstructions: globalData
+      };
+  }, [bookData, globalInstructions]); // מתעדכן אוטומטית כשהמידע משתנה
    
   const [imageZoom, setImageZoom] = useState(100)
   const [rotation, setRotation] = useState(0)
@@ -253,10 +275,6 @@ export default function EditPage() {
     saveSearchesToServer([...savedSearches, newSearch]);
   };
 
-  const removeSavedSearch = (id) => {
-    saveSearchesToServer(savedSearches.filter(s => s.id !== id));
-  };
-
   const moveSearch = (index, direction) => {
     const newSearches = [...savedSearches];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
@@ -266,60 +284,79 @@ export default function EditPage() {
     }
   };
 
+  const removeSavedSearch = (id) => {
+    saveSearchesToServer(savedSearches.filter(s => s.id !== id));
+  };
+
   const runAllSavedReplacements = () => {
     if (savedSearches.length === 0) return;
     
     const processPattern = (str) => str.replaceAll('^13', '\n');
+    
     let tempRight = rightColumn;
     let tempLeft = leftColumn;
     let tempContent = content;
-    let totalChanges = 0;
 
     savedSearches.forEach(search => {
       if (search.isRemoveDigits) {
          const digitRegex = /[0-9]/g;
          if (twoColumns) {
-            if (digitRegex.test(tempRight) || digitRegex.test(tempLeft)) {
-                tempRight = tempRight.replace(digitRegex, '');
-                tempLeft = tempLeft.replace(digitRegex, '');
-                totalChanges++;
-            }
+            tempRight = tempRight.replace(digitRegex, '');
+            tempLeft = tempLeft.replace(digitRegex, '');
          } else {
-            if (digitRegex.test(tempContent)) {
-                tempContent = tempContent.replace(digitRegex, '');
-                totalChanges++;
-            }
+            tempContent = tempContent.replace(digitRegex, '');
          }
          return; 
       }
 
-      const pattern = processPattern(search.findText);
-      const replacement = processPattern(search.replaceText);
+      const f = processPattern(search.findText);
+      const r = processPattern(search.replaceText);
       
-      if (!pattern) return;
+      if (!f) return;
 
-      const escapedPattern = pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\n/g, '\\n');
-      const regex = new RegExp(escapedPattern, 'g');
+      let regex;
+      try {
+          if (search.isRegex) {
+              regex = new RegExp(f, 'g');
+          } else {
+              const escaped = f.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+              regex = new RegExp(escaped, 'g');
+          }
+      } catch (e) {
+          console.error('Invalid Regex in saved search', e);
+          return;
+      }
 
       if (twoColumns) {
-        tempRight = tempRight.replace(regex, replacement);
-        tempLeft = tempLeft.replace(regex, replacement);
+        tempRight = tempRight.replace(regex, r);
+        tempLeft = tempLeft.replace(regex, r);
       } else {
-        tempContent = tempContent.replace(regex, replacement);
+        tempContent = tempContent.replace(regex, r);
       }
-      totalChanges++;
     });
+    
+    let changesMade = false;
 
-    if (totalChanges > 0) {
-      if (twoColumns) {
-        setRightColumn(tempRight);
-        setLeftColumn(tempLeft);
-        handleAutoSaveWrapper(content, tempLeft, tempRight, true);
-      } else {
-        setContent(tempContent);
-        handleAutoSaveWrapper(tempContent, leftColumn, rightColumn, false);
+    if (twoColumns) {
+      if (tempRight !== rightColumn) {
+          updateTextWithHistory(tempRight, 'right');
+          changesMade = true;
       }
+      if (tempLeft !== leftColumn) {
+          updateTextWithHistory(tempLeft, 'left');
+          changesMade = true;
+      }
+    } else {
+      if (tempContent !== content) {
+          updateTextWithHistory(tempContent, null);
+          changesMade = true;
+      }
+    }
+
+    if (changesMade) {
       showAlert('הצלחה', 'כל הפעולות השמורות בוצעו בהצלחה');
+    } else {
+      showAlert('לידיעתך', 'לא נמצאו שינויים לביצוע');
     }
   };
 
@@ -524,8 +561,37 @@ export default function EditPage() {
     setShowSplitDialog(false)
     handleAutoSaveWrapper(content, '', content, true)
   }
+  
+  // השתמשנו בdocument.execCommand כדי לשמור את ההסטורריה לצורך ביטולים
+  const updateTextWithHistory = (newText, column) => {
+    let el;
+    if (column === 'right') el = document.querySelector('textarea[data-column="right"]');
+    else if (column === 'left') el = document.querySelector('textarea[data-column="left"]');
+    else el = document.querySelector('.editor-container textarea');
 
-    const handleFindReplace = (replaceAll = false, overrideFind = null, overrideReplace = null, useRegexOverride = null) => {
+    if (el) {
+        const scrollTop = el.scrollTop;
+        
+        el.focus();
+        el.select();
+        const success = document.execCommand('insertText', false, newText);
+        
+        el.setSelectionRange(el.value.length, el.value.length);
+        el.scrollTop = scrollTop;
+
+        if (!success) {
+            if (column === 'right') handleColumnChange('right', newText);
+            else if (column === 'left') handleColumnChange('left', newText);
+            else { setContent(newText); handleAutoSaveWrapper(newText); }
+        }
+    } else {
+        if (column === 'right') handleColumnChange('right', newText);
+        else if (column === 'left') handleColumnChange('left', newText);
+        else { setContent(newText); handleAutoSaveWrapper(newText); }
+    }
+  }
+
+  const handleFindReplace = (replaceAll = false, overrideFind = null, overrideReplace = null, useRegexOverride = null) => {
     const textToFind = overrideFind !== null ? overrideFind : findText;
     const textToReplace = overrideReplace !== null ? overrideReplace : replaceText;
     const isRegexMode = useRegexOverride !== null ? useRegexOverride : useRegex;
@@ -579,7 +645,7 @@ export default function EditPage() {
     };
 
     if (twoColumns) {
-      let newRight = executeReplace(rightColumn);
+      const newRight = executeReplace(rightColumn);
       let newLeft = leftColumn;
       
       if (!replaceAll && newRight === rightColumn) {
@@ -588,19 +654,20 @@ export default function EditPage() {
           newLeft = executeReplace(leftColumn);
       }
 
-      if (totalOccurrences > 0) {
-        setRightColumn(newRight);
-        setLeftColumn(newLeft);
-        handleAutoSaveWrapper(content, newLeft, newRight, true);
+      if (newRight !== rightColumn) {
+          updateTextWithHistory(newRight, 'right');
       }
+      if (newLeft !== leftColumn) {
+          updateTextWithHistory(newLeft, 'left');
+      }
+
     } else {
       const newContent = executeReplace(content);
-      if (totalOccurrences > 0) {
-        setContent(newContent);
-        handleAutoSaveWrapper(newContent, leftColumn, rightColumn, false);
+      if (newContent !== content) {
+        updateTextWithHistory(newContent, null);
       }
     }
-    
+
     if (totalOccurrences > 0) showAlert('הצלחה', `ההחלפה בוצעה בהצלחה! הוחלפו ${totalOccurrences} מופעים.`);
     else showAlert('לידיעתך', 'לא נמצאו תוצאות התואמות לחיפוש.');
   };
@@ -646,6 +713,23 @@ export default function EditPage() {
   }, [activeTextarea, handleColumnChange, handleAutoSaveWrapper]);
 
   const handlersRef = useRef({ insertTag, handleFinishClick });
+
+  useEffect(() => {
+    const fetchGlobalInstructions = async () => {
+      try {
+        const res = await fetch('/api/global-instructions'); 
+        const data = await res.json();
+        
+        if (data.success && data.instructions) {
+          setGlobalInstructions(data.instructions);
+        }
+      } catch (err) {
+        console.error('Failed to fetch global instructions:', err);
+      }
+    };
+
+    fetchGlobalInstructions();
+  }, []);
 
   useEffect(() => {
     handlersRef.current = { insertTag, handleFinishClick };
@@ -760,13 +844,6 @@ export default function EditPage() {
             showAlert('שגיאה', 'שגיאה ב-OCR: ' + e.message)
         }
     }
-  }
-
-  const getInstructions = () => {
-      return bookData?.editingInfo || { 
-          title: 'הנחיות כלליות', 
-          sections: [{ title: 'כללי', items: ['העתק במדויק'] }] 
-      }
   }
 
   const handleCloseInfoDialog = async (doNotShowAgain) => {
@@ -920,7 +997,8 @@ export default function EditPage() {
 
       <InfoDialog 
         isOpen={showInfoDialog} onClose={handleCloseInfoDialog}
-        editingInstructions={getInstructions()}
+        bookInstructions={allInstructions.bookInstructions}
+        globalInstructions={allInstructions.globalInstructions}
       />
 
       {showUploadDialog && (
@@ -975,4 +1053,3 @@ function UploadDialog({ pageNumber, onConfirm, onCancel }) {
   )
 
 }
-

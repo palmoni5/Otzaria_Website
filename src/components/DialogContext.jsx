@@ -7,6 +7,7 @@ const DialogContext = createContext(null)
 export function DialogProvider({ children }) {
   const [isVisible, setIsVisible] = useState(false)
   const timerRef = useRef(null)
+  const closeTimerRef = useRef(null)
   
   const [dialogConfig, setDialogConfig] = useState({
     isOpen: false,
@@ -26,8 +27,17 @@ export function DialogProvider({ children }) {
     }
   }, [])
 
+  const clearCloseTimer = useCallback(() => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }, [])
+
   const showAlert = useCallback((title, message) => {
     clearAutoCloseTimer()
+    clearCloseTimer()
+    setIsVisible(true)
     setDialogConfig({
       isOpen: true,
       type: 'alert',
@@ -37,10 +47,12 @@ export function DialogProvider({ children }) {
       confirmText: 'הבנתי, סגור',
       timestamp: Date.now()
     })
-  }, [clearAutoCloseTimer])
+  }, [clearAutoCloseTimer, clearCloseTimer])
 
   const showConfirm = useCallback((title, message, onConfirmAction, confirmText = 'אישור', cancelText = 'ביטול') => {
     clearAutoCloseTimer()
+    clearCloseTimer()
+    setIsVisible(true)
     setDialogConfig({
       isOpen: true,
       type: 'confirm',
@@ -51,16 +63,17 @@ export function DialogProvider({ children }) {
       cancelText,
       timestamp: Date.now()
     })
-  }, [clearAutoCloseTimer])
+  }, [clearAutoCloseTimer, clearCloseTimer])
 
   const closeDialog = useCallback(() => {
     clearAutoCloseTimer()
+    clearCloseTimer()
     setIsVisible(false)
     
-    setTimeout(() => {
+    closeTimerRef.current = setTimeout(() => {
       setDialogConfig(prev => ({ ...prev, isOpen: false }))
     }, 300)
-  }, [clearAutoCloseTimer])
+  }, [clearAutoCloseTimer, clearCloseTimer])
 
   const handleConfirm = useCallback(() => {
     if (dialogConfig.onConfirm) {
