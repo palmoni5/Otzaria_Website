@@ -562,6 +562,7 @@ export default function EditPage() {
     handleAutoSaveWrapper(content, '', content, true)
   }
   
+  // השתמשנו בdocument.execCommand כדי לשמור את ההסטורריה לצורך ביטולים
   const updateTextWithHistory = (newText, column) => {
     let el;
     if (column === 'right') el = document.querySelector('textarea[data-column="right"]');
