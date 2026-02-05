@@ -65,7 +65,8 @@ export async function GET(request, { params }) {
         completedPages: book.completedPages,
         category: book.category,
         description: book.description,
-        editingInfo: book.editingInfo || null
+        editingInfo: book.editingInfo || null,
+        examplePage: book.examplePage || null
       },
       pages: formattedPages
     });
