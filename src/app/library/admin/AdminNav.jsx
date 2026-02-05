@@ -19,27 +19,34 @@ export default function AdminNav({ unreadMessagesCount = 0, pendingUploadsCount 
     { id: 'pages', label: 'עמודים', icon: 'description', href: '/library/admin/pages-management' },
     { 
       id: 'messages', 
-      label: `הודעות ${unreadMessagesCount > 0 ? `(${unreadMessagesCount})` : ''}`, 
+      label: 'הודעות', 
       icon: 'mail', 
-      href: '/library/admin/messages' 
+      href: '/library/admin/messages',
+      count: unreadMessagesCount 
     },
     { id: 'reminders', label: 'תזכורות', icon: 'notifications', href: '/library/admin/reminders' },
   ]
 
   return (
-    <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+    <div className="flex gap-2 mb-6 overflow-x-auto p-3 custom-scrollbar">
       {tabs.map((tab) => {
         const isActive = pathname === tab.href
         return (
           <Link
             key={tab.id}
             href={tab.href}
-            className={`px-6 py-3 rounded-lg font-medium transition-all whitespace-nowrap ${
+            className={`px-6 py-3 rounded-lg font-medium transition-all whitespace-nowrap relative group ${
               isActive
                 ? 'bg-primary text-on-primary'
                 : 'glass text-on-surface hover:bg-surface-variant'
             }`}
           >
+            {tab.count > 0 && (
+              <span className="absolute -top-2 -left-2 bg-red-600 text-white text-[10px] font-bold min-w-[20px] h-[20px] flex items-center justify-center rounded-full border-2 border-white shadow-sm z-10">
+                {tab.count}
+              </span>
+            )}
+
             <span className="flex items-center gap-2">
               <span className="material-symbols-outlined">{tab.icon}</span>
               {tab.label}

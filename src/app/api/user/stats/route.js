@@ -69,8 +69,6 @@ export async function GET() {
 
       { $match: { 'bookData.isHidden': { $ne: true } } },
 
-      { $limit: 10 },
-
       {
         $project: {
           _id: 1,

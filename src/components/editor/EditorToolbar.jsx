@@ -31,14 +31,17 @@ export default function EditorToolbar({
   isCollapsed,
   setIsCollapsed,
   isFullScreen,
-  onToggleFullScreen
+  onToggleFullScreen,
+  textAlign,
+  setTextAlign
 }) {
   const preventFocusLoss = (e) => {
     e.preventDefault();
   };
 
+  // --- קבוצת כלי התמונה ---
   const ImageTools = (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-1.5 justify-center">
       <button
         onClick={() => setShowSettings(prev => !prev)}
         className="p-1 h-7 w-7 rounded-md transition-colors flex items-center justify-center hover:bg-gray-100 text-gray-700"
@@ -115,39 +118,20 @@ export default function EditorToolbar({
           </button>
         </>
       )}
-
-      <div className="w-px h-5 bg-gray-200"></div>
-      <a href="https://aistudio.google.com/prompts/new_chat?model=gemini-3-pro-preview" target="_blank" rel="noopener noreferrer" className="w-7 h-7 hover:bg-gray-100 rounded-md flex items-center justify-center">
-        <img src="https://www.gstatic.com/lamda/images/bard_sparkle_v2_advanced.svg" alt="Gemini" className="w-4 h-4" />
-      </a>
     </div>
   );
 
+  // --- קבוצת כלי הטקסט ---
   const TextTools = (
-    <div className={`flex items-center gap-1.5 flex-wrap ${swapPanels ? '' : 'justify-end'}`}>
+    <div className="flex items-center gap-1.5 flex-wrap justify-center">
       <div className="flex items-center gap-0 bg-gray-100 rounded-md p-0.5">
-        <button 
-          onMouseDown={preventFocusLoss}
-          onClick={() => insertTag('b')} 
-          className="w-7 h-7 hover:bg-white rounded flex items-center justify-center" 
-          title="מודגש"
-        >
+        <button onMouseDown={preventFocusLoss} onClick={() => insertTag('b')} className="w-7 h-7 hover:bg-white rounded flex items-center justify-center" title="מודגש">
           <span className="font-bold text-xs">B</span>
         </button>
-        <button 
-          onMouseDown={preventFocusLoss}
-          onClick={() => insertTag('i')} 
-          className="w-7 h-7 hover:bg-white rounded flex items-center justify-center" 
-          title="נטוי"
-        >
+        <button onMouseDown={preventFocusLoss} onClick={() => insertTag('i')} className="w-7 h-7 hover:bg-white rounded flex items-center justify-center" title="נטוי">
           <span className="italic text-xs">I</span>
         </button>
-        <button 
-          onMouseDown={preventFocusLoss}
-          onClick={() => insertTag('u')} 
-          className="w-7 h-7 hover:bg-white rounded flex items-center justify-center" 
-          title="קו תחתון"
-        >
+        <button onMouseDown={preventFocusLoss} onClick={() => insertTag('u')} className="w-7 h-7 hover:bg-white rounded flex items-center justify-center" title="קו תחתון">
           <span className="underline text-xs">U</span>
         </button>
       </div>
@@ -155,45 +139,32 @@ export default function EditorToolbar({
       <div className="w-px h-5 bg-gray-200"></div>
 
       <div className="flex items-center gap-0 bg-gray-100 rounded-md p-0.5">
-        <button 
-          onMouseDown={preventFocusLoss}
-          onClick={() => insertTag('big')} 
-          className="w-7 h-7 hover:bg-white rounded flex items-center justify-center text-xs font-medium"
-        >
-          A+
-        </button>
-        <button 
-          onMouseDown={preventFocusLoss}
-          onClick={() => insertTag('small')} 
-          className="w-7 h-7 hover:bg-white rounded flex items-center justify-center text-[10px] font-medium"
-        >
-          A-
-        </button>
+        <button onMouseDown={preventFocusLoss} onClick={() => insertTag('big')} className="w-7 h-7 hover:bg-white rounded flex items-center justify-center text-xs font-medium">A+</button>
+        <button onMouseDown={preventFocusLoss} onClick={() => insertTag('small')} className="w-7 h-7 hover:bg-white rounded flex items-center justify-center text-[10px] font-medium">A-</button>
       </div>
 
       <div className="w-px h-5 bg-gray-200"></div>
 
       <div className="flex items-center gap-0 bg-gray-100 rounded-md p-0.5">
-        <button 
-          onMouseDown={preventFocusLoss}
-          onClick={() => insertTag('h1')} 
-          className="px-2 h-7 hover:bg-white rounded text-[10px] font-bold flex items-center justify-center"
-        >
-          H1
+        <button onMouseDown={preventFocusLoss} onClick={() => insertTag('h1')} className="px-2 h-7 hover:bg-white rounded text-[10px] font-bold flex items-center justify-center">H1</button>
+        <button onMouseDown={preventFocusLoss} onClick={() => insertTag('h2')} className="px-2 h-7 hover:bg-white rounded text-[10px] font-bold flex items-center justify-center">H2</button>
+        <button onMouseDown={preventFocusLoss} onClick={() => insertTag('h3')} className="px-2 h-7 hover:bg-white rounded text-[10px] font-bold flex items-center justify-center">H3</button>
+      </div>
+
+      <div className="w-px h-5 bg-gray-200"></div>
+
+      <div className="flex items-center gap-0 bg-gray-100 rounded-md p-0.5">
+        <button onClick={() => setTextAlign('right')} className={`w-7 h-7 rounded flex items-center justify-center ${textAlign === 'right' ? 'bg-white shadow-sm text-blue-600' : 'hover:bg-white text-gray-600'}`} title="יישור לימין">
+          <span className="material-symbols-outlined text-sm">format_align_right</span>
         </button>
-        <button 
-          onMouseDown={preventFocusLoss}
-          onClick={() => insertTag('h2')} 
-          className="px-2 h-7 hover:bg-white rounded text-[10px] font-bold flex items-center justify-center"
-        >
-          H2
+        <button onClick={() => setTextAlign('center')} className={`w-7 h-7 rounded flex items-center justify-center ${textAlign === 'center' ? 'bg-white shadow-sm text-blue-600' : 'hover:bg-white text-gray-600'}`} title="מרכז">
+          <span className="material-symbols-outlined text-sm">format_align_center</span>
         </button>
-        <button 
-          onMouseDown={preventFocusLoss}
-          onClick={() => insertTag('h3')} 
-          className="px-2 h-7 hover:bg-white rounded text-[10px] font-bold flex items-center justify-center"
-        >
-          H3
+        <button onClick={() => setTextAlign('left')} className={`w-7 h-7 rounded flex items-center justify-center ${textAlign === 'left' ? 'bg-white shadow-sm text-blue-600' : 'hover:bg-white text-gray-600'}`} title="יישור לשמאל">
+          <span className="material-symbols-outlined text-sm">format_align_left</span>
+        </button>
+        <button onClick={() => setTextAlign('justify')} className={`w-7 h-7 rounded flex items-center justify-center ${textAlign === 'justify' ? 'bg-white shadow-sm text-blue-600' : 'hover:bg-white text-gray-600'}`} title="יישור לשני הצדדים">
+          <span className="material-symbols-outlined text-sm">format_align_justify</span>
         </button>
       </div>
 
@@ -220,11 +191,7 @@ export default function EditorToolbar({
 
       <div className="w-px h-5 bg-gray-200"></div>
 
-      <button 
-        onClick={handleFinish}
-        className="flex items-center gap-1.5 px-3 py-1 h-7 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-sm transition-colors ml-2"
-        title="סיים הקלדת קובץ וסמן כהושלם"
-      >
+      <button onClick={handleFinish} className="flex items-center gap-1.5 px-3 py-1 h-7 bg-green-600 hover:bg-green-700 text-white rounded-md shadow-sm transition-colors ml-2" title="סיים הקלדת קובץ וסמן כהושלם">
         <span className="material-symbols-outlined text-sm">upload_file</span>
         <span className="text-[11px] font-bold">סיים</span>
       </button>
@@ -251,21 +218,11 @@ export default function EditorToolbar({
 
       <div className="w-px h-5 bg-gray-200"></div>
 
-      <button 
-          onClick={onToggleFullScreen}
-          className="w-7 h-7 hover:bg-gray-100 text-gray-600 rounded-md flex items-center justify-center"
-          title={isFullScreen ? "צא ממסך מלא" : "מסך מלא"}
-      >
-        <span className="material-symbols-outlined text-sm">
-          {isFullScreen ? 'close_fullscreen' : 'fullscreen'}
-        </span>
+      <button onClick={onToggleFullScreen} className="w-7 h-7 hover:bg-gray-100 text-gray-600 rounded-md flex items-center justify-center" title={isFullScreen ? "צא ממסך מלא" : "מסך מלא"}>
+        <span className="material-symbols-outlined text-sm">{isFullScreen ? 'close_fullscreen' : 'fullscreen'}</span>
       </button>
 
-      <button 
-          onClick={() => setIsCollapsed(true)} 
-          className="w-7 h-7 hover:bg-gray-100 text-gray-400 hover:text-gray-600 rounded-md flex items-center justify-center mr-1"
-          title="קפל סרגל כלים"
-      >
+      <button onClick={() => setIsCollapsed(true)} className="w-7 h-7 hover:bg-gray-100 text-gray-400 hover:text-gray-600 rounded-md flex items-center justify-center mr-1" title="קפל סרגל כלים">
         <span className="material-symbols-outlined text-sm">expand_less</span>
       </button>
     </div>
@@ -287,12 +244,14 @@ export default function EditorToolbar({
 
   return (
     <div className={`bg-white border-b border-gray-200 z-30 shadow-sm transition-all sticky ${isFullScreen ? 'top-0' : 'top-[65px]'}`}>
-      <div className="container mx-auto px-4 py-1.5">
-        <div className="flex items-center justify-between gap-2">
+      <div className="w-full px-4 py-1.5">
+        <div className="flex items-center w-full">
           
-          {swapPanels ? TextTools : ImageTools}
+          <div className="flex-1 flex items-center justify-center min-w-0 overflow-x-auto no-scrollbar px-2">
+            {swapPanels ? TextTools : ImageTools}
+          </div>
 
-          <div className="flex items-center px-2">
+          <div className="flex-none px-2 z-10 flex items-center justify-center">
             <button
               onClick={togglePanelOrder}
               className={`p-1.5 rounded-full transition-all border shadow-sm ${
@@ -313,7 +272,9 @@ export default function EditorToolbar({
             </button>
           </div>
 
-          {swapPanels ? ImageTools : TextTools}
+          <div className="flex-1 flex items-center justify-center min-w-0 overflow-x-auto no-scrollbar px-2">
+            {swapPanels ? ImageTools : TextTools}
+          </div>
 
         </div>
       </div>

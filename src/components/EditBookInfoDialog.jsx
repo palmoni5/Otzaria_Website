@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useDialog } from '@/components/DialogContext'
 
@@ -12,16 +12,62 @@ export default function EditBookInfoDialog({ book, onClose, onSave }) {
   ])
   const [saving, setSaving] = useState(false)
   const [mounted, setMounted] = useState(false)
+  
+  const [examplePage, setExamplePage] = useState(null)
+  const [totalPages, setTotalPages] = useState(0)
+  const [showPageMenu, setShowPageMenu] = useState(false)
+  const pageMenuRef = useRef(null)
 
   useEffect(() => {
     setMounted(true)
-    if (book?.editingInfo) {
-      setTitle(book.editingInfo.title || 'הנחיות עריכה')
-      setSections(book.editingInfo.sections || [{ title: 'כללי', items: [''] }])
-    }
     document.body.style.overflow = 'hidden'
+
+    if (book) {
+        if (book.editingInfo) {
+            setTitle(book.editingInfo.title || 'הנחיות עריכה')
+            setSections(book.editingInfo.sections || [{ title: 'כללי', items: [''] }])
+        }
+        
+        setTotalPages(book.totalPages || 0)
+        if (book.examplePage !== undefined) {
+            setExamplePage(book.examplePage)
+        }
+
+        const fetchBookDetails = async () => {
+            if (book.path) {
+                try {
+                    const response = await fetch(`/api/book/${encodeURIComponent(book.path)}`)
+                    const data = await response.json()
+                    
+                    if (data.success && data.book) {
+                        setTotalPages(data.book.totalPages || 0)
+                        
+                        if (data.book.examplePage !== undefined) {
+                            setExamplePage(data.book.examplePage)
+                        } else {
+                            console.warn('השדה examplePage לא הוחזר מהשרת. בדוק את ה-API של שליפת הספר.')
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to fetch fresh book details:', error)
+                }
+            }
+        }
+        fetchBookDetails()
+    }
+
     return () => { document.body.style.overflow = 'unset' }
   }, [book])
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+        if (pageMenuRef.current && !pageMenuRef.current.contains(event.target)) {
+            setShowPageMenu(false)
+        }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   if (!book || !mounted) return null
 
@@ -61,7 +107,8 @@ export default function EditBookInfoDialog({ book, onClose, onSave }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bookId: book.id || book._id, 
-          editingInfo
+          editingInfo,
+          examplePage
         })
       })
 
@@ -82,8 +129,6 @@ export default function EditBookInfoDialog({ book, onClose, onSave }) {
     }
   }
 
-  if (!book) return null
-
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
       <div 
@@ -95,12 +140,76 @@ export default function EditBookInfoDialog({ book, onClose, onSave }) {
             <span className="material-symbols-outlined text-blue-600 text-3xl">edit_note</span>
             <span>עריכת מידע - {book.name}</span>
           </h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 p-2 rounded-full transition-colors"
-          >
-            <span className="material-symbols-outlined text-2xl block">close</span>
-          </button>
+          
+          <div className="flex items-center gap-3">
+            {/* כפתור ותפריט הגדרת עמוד דוגמא */}
+            <div className="relative" ref={pageMenuRef}>
+                <button
+                    onClick={() => setShowPageMenu(!showPageMenu)}
+                    className={`flex items-center gap-2 px-3 py-1.5 border rounded-lg transition-colors text-sm font-bold ${
+                        examplePage 
+                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100' 
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'
+                    }`}
+                    title="הגדר עמוד דוגמא שיוצג למשתמשים"
+                >
+                    <span className="material-symbols-outlined text-lg">
+                        {examplePage ? 'bookmark' : 'bookmark_add'}
+                    </span>
+                    <span>
+                        {examplePage ? `עמוד דוגמא: ${examplePage}` : 'הגדר עמוד דוגמא'}
+                    </span>
+                    <span className="material-symbols-outlined text-sm">arrow_drop_down</span>
+                </button>
+
+                {showPageMenu && (
+                    <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-[60] animate-in fade-in slide-in-from-top-2 duration-200">
+                        <div className="p-2 border-b border-gray-50 bg-gray-50/50">
+                            <span className="text-xs font-bold text-gray-500">בחר עמוד (סה"כ {totalPages})</span>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto custom-scrollbar p-1">
+                            <button
+                                onClick={() => {
+                                    setExamplePage(null)
+                                    setShowPageMenu(false)
+                                }}
+                                className={`w-full text-right px-3 py-2 rounded-lg text-sm transition-colors mb-1 ${
+                                    examplePage === null ? 'bg-indigo-50 text-indigo-700 font-bold' : 'hover:bg-gray-50 text-gray-700'
+                                }`}
+                            >
+                                ללא עמוד דוגמא
+                            </button>
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map(num => (
+                                <button
+                                    key={num}
+                                    onClick={() => {
+                                        setExamplePage(num)
+                                        setShowPageMenu(false)
+                                    }}
+                                    className={`w-full text-right px-3 py-2 rounded-lg text-sm transition-colors ${
+                                        examplePage === num ? 'bg-indigo-50 text-indigo-700 font-bold' : 'hover:bg-gray-50 text-gray-700'
+                                    }`}
+                                >
+                                    עמוד {num}
+                                </button>
+                            ))}
+                            {totalPages === 0 && (
+                                <div className="p-3 text-center text-xs text-gray-400">
+                                    אין עמודים בספר זה
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 p-2 rounded-full transition-colors"
+            >
+                <span className="material-symbols-outlined text-2xl block">close</span>
+            </button>
+          </div>
         </div>
 
         <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">

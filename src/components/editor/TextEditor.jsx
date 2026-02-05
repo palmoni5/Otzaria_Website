@@ -12,7 +12,8 @@ const TextEditor = forwardRef(({
   setActiveTextarea,
   selectedFont,
   columnWidth,
-  onColumnResizeStart
+  onColumnResizeStart,
+  textAlign
 }, ref) => {
   return (
     <div
@@ -37,7 +38,7 @@ const TextEditor = forwardRef(({
               onChange={(e) => handleColumnChange('right', e.target.value)}
               onFocus={() => setActiveTextarea('right')}
               placeholder={`טקסט ${rightColumnName}...`}
-              style={{ fontFamily: selectedFont }}
+              style={{ fontFamily: selectedFont, textAlign: textAlign }}
               className="flex-1 p-4 bg-white border-2 border-surface-variant rounded-lg resize-none focus:outline-none focus:border-primary transition-colors text-lg leading-relaxed"
               dir="rtl"
             />
@@ -59,7 +60,7 @@ const TextEditor = forwardRef(({
               onChange={(e) => handleColumnChange('left', e.target.value)}
               onFocus={() => setActiveTextarea('left')}
               placeholder={`טקסט ${leftColumnName}...`}
-              style={{ fontFamily: selectedFont }}
+              style={{ fontFamily: selectedFont, textAlign: textAlign }}
               className="flex-1 p-4 bg-white border-2 border-surface-variant rounded-lg resize-none focus:outline-none focus:border-primary transition-colors text-lg leading-relaxed"
               dir="rtl"
             />
@@ -71,7 +72,7 @@ const TextEditor = forwardRef(({
           onChange={(e) => handleAutoSave(e.target.value)}
           onFocus={() => setActiveTextarea(null)}
           placeholder="התחל להקליד את הטקסט מהעמוד כאן..."
-          style={{ fontFamily: selectedFont }}
+          style={{ fontFamily: selectedFont, textAlign: textAlign }}
           className="w-full h-full p-4 bg-white border-2 border-surface-variant rounded-lg resize-none focus:outline-none focus:border-primary transition-colors text-lg leading-relaxed"
           dir="rtl"
         />
