@@ -16,7 +16,7 @@ export default function Footer() {
               <span className="text-2xl font-bold text-primary font-frank">ספריית אוצריא</span>
             </div>
             <p className="text-on-surface/70 text-lg leading-relaxed mb-6">
-              פלטפורמה משותפת לעריכה ושיתוף של ספרי קודש.<br />
+              פלטפורמה משותפת לעריכה של ספרי קודש.<br />
               שימור המורשת התורנית והנגשתה לכל.
             </p>
             <div className="flex gap-3">
