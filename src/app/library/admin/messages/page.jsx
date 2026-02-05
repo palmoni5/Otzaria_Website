@@ -38,7 +38,19 @@ export default function AdminMessagesPage() {
       const usersData = await usersRes.json()
       
       if (msgsData.success) {
-        setMessages(msgsData.messages)
+        const sortedMessages = msgsData.messages.sort((a, b) => {
+          const lastTimeA = a.replies && a.replies.length > 0 
+            ? new Date(a.replies[a.replies.length - 1].createdAt).getTime()
+            : new Date(a.createdAt).getTime();
+
+          const lastTimeB = b.replies && b.replies.length > 0 
+            ? new Date(b.replies[b.replies.length - 1].createdAt).getTime()
+            : new Date(b.createdAt).getTime();
+
+          return lastTimeB - lastTimeA;
+        });
+
+        setMessages(sortedMessages)
       }
       
       if (usersData.success) {
@@ -158,7 +170,14 @@ export default function AdminMessagesPage() {
       ) : (
           <div className="space-y-4">
               {messages.map(message => (
-                  <div key={message.id} className={`glass p-6 rounded-lg transition-all ${message.status === 'unread' ? 'border-2 border-primary shadow-md' : 'hover:shadow-md'}`}>
+                  <div 
+                    key={message.id} 
+                    className={`p-6 rounded-lg transition-all ${
+                        message.status === 'unread' 
+                        ? 'bg-red-50 border-2 border-red-200 shadow-md'
+                        : 'glass hover:shadow-md'
+                    }`}
+                  >
                       <div className="flex items-start justify-between mb-4">
                           <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
@@ -341,4 +360,5 @@ export default function AdminMessagesPage() {
       )}
     </div>
   )
+
 }
