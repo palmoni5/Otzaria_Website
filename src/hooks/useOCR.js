@@ -33,49 +33,43 @@ export function useOCR() {
     return result.text
   }
 
-  const performTesseractOCR = async (croppedBlob, onProgress) => {
+const performTesseractOCR = async (croppedBlob, onProgress) => {
     const Tesseract = (await import('tesseract.js')).default;
 
-    // 1. יוצרים את ה-Worker ללא ה-logger בשלב הראשון כדי למנוע את שגיאת ה-Clone
-    const worker = await Tesseract.createWorker({
-      // הנתיב לתיקיית המודלים בתוך public
-      langPath: window.location.origin + '/tessdata', 
-      
-      // הגדרת ה-Gzip כ-false כי המודלים שהורדת הם קבצי .traineddata רגילים
-      gzip: false, 
-      
-      // במקום להעביר את ה-logger כאן, אנחנו נגדיר אותו בשלב הבא אם הגרסה תומכת,
-      // או שפשוט נוותר עליו אם הוא גורם לשגיאות קריטיות.
-    });
-
     try {
-      // 2. הגדרת הלוגר בצורה בטוחה יותר (אם זה עדיין זורק שגיאה, אפשר למחוק את השורה הזו)
-      if (onProgress) {
-        worker.setLogger((m) => {
-          if (m.status === 'recognizing text') {
-            onProgress(Math.round(m.progress * 100));
-          }
-        });
-      }
+      // בגרסה 7, עדיף להשתמש ב-recognize הישיר. 
+      // הוא מטפל בעצמו ביצירת ה-worker ובטעינת השפות.
+      const { data: { text } } = await Tesseract.recognize(
+        croppedBlob,
+        'heb+heb_rashi', // כאן אנחנו מחזירים את המחרוזת עם הפלוס
+        {
+          // הגדרות הנתיב המקומי
+          langPath: window.location.origin + '/tessdata',
+          gzip: false,
+          
+          // לוגר התקדמות (כאן הוא עובד בצורה בטוחה יותר בתוך ה-options)
+          logger: m => {
+            if (m.status === 'recognizing text' && onProgress) {
+              onProgress(Math.round(m.progress * 100));
+            }
+          },
 
-      // 3. טעינת השפות (עברית + רש"י)
-      await worker.loadLanguage('heb+heb_rashi');
-      
-      // 4. אתחול המנוע
-      await worker.initialize('heb+heb_rashi');
-
-      // 5. ביצוע ה-OCR
-      const { data: { text } } = await worker.recognize(croppedBlob);
-      
-      // 6. סגירת ה-Worker
-      await worker.terminate();
+          // הגדרת פרמטרים לשיפור הדיוק
+          tessedit_char_whitelist: 'אבגדהוזחטיכלמנסעפצקרשתךםןףץ"\'.,-: ',
+        }
+      );
 
       return text.trim();
 
     } catch (error) {
       console.error('Tesseract Error:', error);
-      if (worker) await worker.terminate();
-      throw new Error('נכשל בזיהוי טקסט (Tesseract)');
+      
+      // אם יש שגיאת WASM (כמו DotProductSSE), ננסה פעם אחרונה בלי רש"י כדי לוודא שזה לא קובץ פגום
+      if (error.message.includes('DotProductSSE')) {
+         throw new Error('שגיאת מעבד (SIMD). נסה לרענן את הדף או להשתמש בדפדפן אחר.');
+      }
+      
+      throw new Error('זיהוי הטקסט נכשל. וודא שקבצי המודל בתיקיית public/tessdata תקינים.');
     }
   };
 
