@@ -38,7 +38,7 @@ export default function AdminMessagesPage() {
       const usersData = await usersRes.json()
       
       if (msgsData.success) {
-        const sortedMessages = msgsData.messages.sort((a, b) => {
+        const sortedMessages = [...msgsData.messages].sort((a, b) => {
           const lastTimeA = a.replies && a.replies.length > 0 
             ? new Date(a.replies[a.replies.length - 1].createdAt).getTime()
             : new Date(a.createdAt).getTime();
