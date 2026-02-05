@@ -216,6 +216,7 @@ export default function AdminMessagesPage() {
                                             {new Date(reply.createdAt).toLocaleString('he-IL', {
                                                 day: 'numeric',
                                                 month: 'numeric',
+                                                year: 'numeric',
                                                 hour: '2-digit',
                                                 minute: '2-digit'
                                             })}
@@ -369,4 +370,5 @@ export default function AdminMessagesPage() {
   )
 
 }
+
 
