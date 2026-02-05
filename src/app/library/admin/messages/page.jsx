@@ -212,7 +212,14 @@ export default function AdminMessagesPage() {
                                   <div key={idx} className="bg-surface p-3 rounded-lg text-sm shadow-sm">
                                       <div className="flex justify-between text-xs text-gray-500 mb-1">
                                           <span className="font-bold text-primary">{reply.senderName || 'מנהל'}</span>
-                                          <span>{new Date(reply.createdAt).toLocaleDateString('he-IL')}</span>
+                                          <span>
+                                            {new Date(reply.createdAt).toLocaleString('he-IL', {
+                                                day: 'numeric',
+                                                month: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                            })}
+                                          </span>
                                       </div>
                                       <p className="text-gray-800">{reply.content}</p>
                                   </div>
@@ -362,3 +369,4 @@ export default function AdminMessagesPage() {
   )
 
 }
+
