@@ -10,12 +10,11 @@ export default function AdminLayout({ children }) {
   const { data: session } = useSession()
   const [counts, setCounts] = useState({ unreadMessages: 0, pendingUploads: 0 })
 
-  // טעינת מוניטורים גלובליים לטאבים
   useEffect(() => {
     const fetchCounts = async () => {
       try {
         const [msgRes, uploadRes] = await Promise.all([
-            fetch('/api/messages'),
+            fetch('/api/messages?allMessages=true'), 
             fetch('/api/admin/uploads/list')
         ])
         
@@ -31,11 +30,12 @@ export default function AdminLayout({ children }) {
       }
     }
 
-    fetchCounts()
-    // רענון כל דקה
-    const interval = setInterval(fetchCounts, 60000)
-    return () => clearInterval(interval)
-  }, [])
+    if (session?.user?.role === 'admin') {
+        fetchCounts()
+        const interval = setInterval(fetchCounts, 60000)
+        return () => clearInterval(interval)
+    }
+  }, [session])
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -44,7 +44,6 @@ export default function AdminLayout({ children }) {
       <main className="flex-1">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-7xl mx-auto">
-            {/* כותרת ראשית משותפת */}
             <div className="flex items-center justify-between mb-8">
               <div>
                 <h1 className="text-4xl font-bold text-on-surface flex items-center gap-3">
@@ -76,13 +75,11 @@ export default function AdminLayout({ children }) {
               </div>
             </div>
 
-            {/* תפריט ניווט */}
             <AdminNav 
                 unreadMessagesCount={counts.unreadMessages} 
                 pendingUploadsCount={counts.pendingUploads} 
             />
 
-            {/* תוכן העמוד הספציפי */}
             <div className="min-h-[500px]">
                 {children}
             </div>
