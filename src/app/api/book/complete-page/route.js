@@ -7,70 +7,52 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 
 export async function POST(request) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    try {
+        const session = await getServerSession(authOptions);
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { pageId, bookId } = await request.json();
-    await connectDB();
+        const formData = await request.formData();
+        const file = formData.get('file');
+        const bookName = formData.get('bookName');
 
-    const isAdmin = session.user.role === 'admin';
+        if (!file || !bookName) return NextResponse.json({ error: 'Missing data' }, { status: 400 });
 
-    const query = { _id: pageId };
-    if (!isAdmin) {
-        query.claimedBy = session.user._id;
-    }
+        const content = await file.text();
+        await connectDB();
 
-    const page = await Page.findOne(query);
 
-    if (!page) {
+        const upload = await Upload.findOneAndUpdate(
+            
+
+            { bookName: bookName }, 
+            
+
+            { 
+                uploader: session.user._id, 
+                originalFileName: file.name,
+                content: content,
+                fileSize: file.size,
+                lineCount: content.split('\n').length,
+                status: 'pending',
+                createdAt: new Date() 
+            },
+            
+
+            { 
+                upsert: true, 
+                new: true, 
+                setDefaultsOnInsert: true 
+            }
+        );
+
         return NextResponse.json({ 
-            error: isAdmin ? 'Page not found' : 'Page not found or unauthorized' 
-        }, { status: 404 });
+            success: true, 
+            message: 'התוכן עודכן בהצלחה',
+            uploadId: upload._id 
+        });
+
+    } catch (error) {
+        console.error('Upload Error:', error);
+        return NextResponse.json({ success: false, error: 'שגיאה בעיבוד הקובץ' }, { status: 500 });
     }
-
-    if (page.status !== 'in-progress' && page.status !== 'completed') {
-         return NextResponse.json({ error: 'Cannot complete page in current status' }, { status: 400 });
-    }
-
-    const wasAlreadyCompleted = page.status === 'completed';
-
-    page.status = 'completed';
-    page.completedAt = new Date();
-    
-    if (!page.claimedBy) {
-        page.claimedBy = session.user._id;
-        page.claimedAt = new Date();
-    }
-    
-    await page.save();
-    
-    await page.populate('claimedBy', 'name email');
-
-    if (!wasAlreadyCompleted) {
-        await Book.findByIdAndUpdate(page.book, { $inc: { completedPages: 1 } });
-        
-        const userIdToReward = page.claimedBy._id || page.claimedBy; 
-        await User.findByIdAndUpdate(userIdToReward, { $inc: { points: 10 } });
-    }
-
-    return NextResponse.json({ 
-        success: true, 
-        message: 'הושלם בהצלחה!',
-        page: { 
-            id: page._id,
-            number: page.pageNumber,
-            status: page.status,
-            thumbnail: page.imagePath,
-            claimedBy: page.claimedBy ? page.claimedBy.name : null,
-            claimedById: page.claimedBy ? page.claimedBy._id : null,
-            claimedAt: page.claimedAt,
-            completedAt: page.completedAt
-        }
-    });
-
-  } catch (error) {
-    console.error('Complete Page Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
 }
