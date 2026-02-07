@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import Header from '@/components/Header'
+import Link from 'next/link'
 
 export default function LicensePage() {
   return (
@@ -55,13 +56,9 @@ export default function LicensePage() {
                    <span className="material-symbols-outlined text-primary text-lg">info</span>
                    <p>
                     לצפייה ברשיון המאגר המלא:{' '}
-                    <a 
-                      href="/license"
-                      rel="noopener noreferrer"
-                      className="text-primary font-bold hover:underline"
-                    >
+                    <Link href="/license" className="text-primary font-bold hover:underline">
                       לחצו כאן
-                    </a>
+                    </Link>
                   </p>
                 </div>
               </div>
