@@ -73,3 +73,6 @@ public/version.json
 public/export-editor/dicta-editor-offline.html
 .vscode/settings.json
 .gstack/
+
+# Claude Code local dev config
+.claude/launch.json

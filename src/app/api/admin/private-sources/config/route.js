@@ -6,14 +6,16 @@ import SystemConfig from '@/models/SystemConfig';
 import { isAdmin } from '@/lib/roles';
 import { CONFIG_KEYS, MANUAL_SETS_KEY, loadManualSets, loadOptionConfigs } from '@/lib/private-sources';
 import { validateManualSets } from '@/lib/private-sources-sets';
+import { OUTREACH_STATUSES_CONFIG_KEY } from '@/lib/institute-outreach';
 
-const ALLOWED_KEYS = [...Object.values(CONFIG_KEYS), MANUAL_SETS_KEY];
+const ALLOWED_KEYS = [...Object.values(CONFIG_KEYS), MANUAL_SETS_KEY, OUTREACH_STATUSES_CONFIG_KEY];
 
 const CONFIG_LABELS = {
   [CONFIG_KEYS.statuses]: 'סטטוסים למקורות ספרים פרטיים',
   [CONFIG_KEYS.methods]: 'אופני קבלת אישור לספרים פרטיים',
   [CONFIG_KEYS.platforms]: 'פלטפורמות מאושרות לספרים פרטיים',
   [MANUAL_SETS_KEY]: 'סטים ידניים של ספרים פרטיים',
+  [OUTREACH_STATUSES_CONFIG_KEY]: 'סטטוסים של פניות למכונים',
 };
 
 async function requireAdmin() {
