@@ -158,6 +158,7 @@ const BOOKS_ADMIN_BLOCKED_PAGES = [
 const BOOKS_ADMIN_BLOCKED_API = [
   '/api/admin/users',
   '/api/admin/private-sources',
+  '/api/admin/institute-outreach',
   '/api/admin/plugins',
   '/api/admin/plugin-notifications',
   '/api/admin/plugin-categories',

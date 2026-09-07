@@ -7,6 +7,7 @@ import StatusBadge from '@/components/status/StatusBadge'
 import StatusConfigModal from '@/components/status/StatusConfigModal'
 import SourceEditModal from './SourceEditModal'
 import ManualSetsModal from './ManualSetsModal'
+import OutreachTab from './OutreachTab'
 // קובץ טהור (ללא mongoose) ולכן ניתן לייבוא גם מרכיב לקוח
 import { MANUAL_SETS_CONFIG_KEY } from '@/lib/private-sources-sets'
 
@@ -67,7 +68,43 @@ const NO_RECORD = '__none__'
 // קטגוריה שמוצגת תמיד בתחתית העמוד
 const NOT_ADAPTED_CATEGORY = 'לא מותאם עדיין לאוצריא'
 
+const TABS = [
+  { id: 'sources', label: 'מקורות ספרים', icon: 'copyright' },
+  { id: 'outreach', label: 'פניות למכונים', icon: 'contact_phone' },
+]
+
+/**
+ * העמוד מחזיק שתי כרטיסיות: רשומות המקור של הספרים הפרטיים, ורישום הפניות
+ * למכונים (כולל פניות מתוכננות) — שתיהן חלקים של אותו תהליך השגת אישורים.
+ */
 export default function PrivateSourcesPage() {
+  const [tab, setTab] = useState('sources')
+
+  return (
+    <div className="space-y-6">
+      <div className="glass-strong p-2 rounded-xl flex gap-2">
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setTab(item.id)}
+            className={`flex-1 px-4 py-2.5 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors ${
+              tab === item.id
+                ? 'bg-primary text-on-primary'
+                : 'text-on-surface hover:bg-surface-variant'
+            }`}
+          >
+            <span className="material-symbols-outlined">{item.icon}</span>
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'sources' ? <SourcesTab /> : <OutreachTab />}
+    </div>
+  )
+}
+
+function SourcesTab() {
   const { showAlert, showMessage, showConfirm } = useDialog()
 
   const [items, setItems] = useState([])
