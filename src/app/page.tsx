@@ -358,6 +358,28 @@ export default function Home() {
             </div>
         </section>
 
+        {/* Offline Update Tool */}
+        <section className="py-16 px-4 bg-surface">
+            <div className="container mx-auto max-w-5xl">
+                <div className="glass-strong rounded-2xl p-8 md:p-10 border border-surface-variant shadow-lg flex flex-col md:flex-row items-center gap-8 animate-enter-up">
+                    <div className="w-24 h-24 rounded-2xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="material-symbols-outlined text-6xl text-primary">cloud_off</span>
+                    </div>
+                    <div className="flex-1 text-center md:text-right">
+                        <h2 className="text-3xl font-bold mb-3 font-frank">המחשב שלכם לא מחובר לאינטרנט?</h2>
+                        <p className="text-on-surface/70 leading-relaxed">
+                            &quot;עדכוני אוצריא&quot; הוא כלי נפרד שמורידים במחשב מקוון על כונן USB, ומעדכנים
+                            איתו במחשב הלא-מקוון את התוכנה, את ספריית הספרים ואת התוספים, בלי חיבור לרשת.
+                        </p>
+                    </div>
+                    <Link href="/offline" prefetch={false} className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg font-medium hover:bg-primary/90 transition-colors shadow-lg whitespace-nowrap">
+                        <span className="material-symbols-outlined">usb</span>
+                        לכלי העדכון הלא-מקוון
+                    </Link>
+                </div>
+            </div>
+        </section>
+
         {/* Contribute Link */}
         <section className="py-20 px-4 bg-primary/5 text-center">
             <div className="container mx-auto">

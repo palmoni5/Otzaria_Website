@@ -17,6 +17,7 @@ export const LIBRARY_NAV_LINKS = [
 export const MAIN_NAV_LINKS = [
   { href: '/library', label: 'ספריית אוצריא', highlight: true },
   { href: '/#download', label: 'הורדה', highlight: false },
+  { href: '/offline', label: 'עדכון לא-מקוון', highlight: false },
   { href: '/plugins', label: 'תוספים', highlight: false },
   { href: '/docs', label: 'מדריכים', highlight: false },
   { href: '/faq', label: 'שאלות נפוצות', highlight: false },
